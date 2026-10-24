@@ -57,7 +57,7 @@
   {
     "corpusPath": "prompts/run.md",
     "heading": "`motir run <parent>` — run a container ONE LAYER above leaves (one commit per child)",
-    "sha256": "15ddcbc7f26b968ed767395418716751db479b91234886edc27647ec6d6e9878"
+    "sha256": "1acc2350bcdaea56ad5338fc0b8965dde7e4c0d8e8b43d95744129bcc0319b0e"
   },
   {
     "corpusPath": "prompts/_shared.md",
