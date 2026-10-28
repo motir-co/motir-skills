@@ -46,6 +46,11 @@
   },
   {
     "corpusPath": "prompts/run.md",
+    "heading": "Code + tests — every implementation subtask ships BOTH (one deliverable, not two)",
+    "sha256": "dd7a0f60c25ba609be330dd8352e658f5bfb94a8b9c1faa00abab04430c18866"
+  },
+  {
+    "corpusPath": "prompts/run.md",
     "heading": "⚠️ A RECORDED DEVIATION that names an OPEN defect is a `bug` to FILE — never a paragraph",
     "sha256": "00b6a3905ae07aacaee1248451b3490ece1b5fa5fc5ba78172fe7ebf9ccd559c"
   },
