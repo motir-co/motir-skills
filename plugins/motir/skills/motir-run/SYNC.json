@@ -1,6 +1,11 @@
 [
   {
     "corpusPath": "prompts/run.md",
+    "heading": "⚠️ A RUN NEVER ASKS ABOUT THE IMPLEMENTATION — it DECIDES what the plan left open by best practice, and RECORDS each decision",
+    "sha256": "8e25e5cdabe755549113260ce6c69aa40aaf6bc69a859b61c92afcef2daf36bd"
+  },
+  {
+    "corpusPath": "prompts/run.md",
     "heading": "⚠️ WHEN THE `motir-plan` SKILL IS NOT AVAILABLE — trigger motir-ai with the WHAT, or park, comment and STOP",
     "sha256": "366b5aa7cb4476fcc168d2687e938fbc49cf039235fd5bbeab2e89d6e1d7497c"
   },
@@ -22,7 +27,7 @@
   {
     "corpusPath": "prompts/run.md",
     "heading": "Worktree rules",
-    "sha256": "8b22863ae08e421b4dbb074de3cf1ad7c841bfd2b0aebcce9c305e3146bad806"
+    "sha256": "c3879b0c0876d9cfe3c7116029259968d84fbc2c6c854c4d54fafd1e3075e214"
   },
   {
     "corpusPath": "prompts/run.md",
@@ -52,7 +57,7 @@
   {
     "corpusPath": "prompts/run.md",
     "heading": "`motir run` (alias `motir next --run`)",
-    "sha256": "a5be44c79c930d45b4320860a115f3fccc7b2d70678f6baa394fdfa429235769"
+    "sha256": "00b1c7e55cf1234f57012e9472888dfd257fd01ac2ebbb7dd69a4dd3726d7241"
   },
   {
     "corpusPath": "prompts/run.md",
