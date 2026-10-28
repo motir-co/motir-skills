@@ -222,9 +222,19 @@ git worktree add ../<repo>-<KEY> -b <KEY>-<short-slug> origin/<default-branch>
   after publishing (an edit is a new version, and a second publish replaces the question). Report it as
   **published and awaiting approval**, with the page id and version.
 - Do all the work in that worktree. Stage specific paths (`git add <path>`, never `-A`).
-- Run the repository's checks — lint, type-check, build — and **only the tests you added or changed**.
-  The pull request's CI runs the whole suite; a full local run is a slower copy of a measurement that is
-  already queued.
+- **A `code` card ships the tests that cover its change, and owns the suites that already pin what it
+  changes.** Grep the tests for every function, route, message and state you change, and update each
+  suite that asserts the old behaviour in the same change set. A criterion that limits the diff to a
+  file list, or says no existing suite is modified, does not stop that update: make it, and record the
+  mismatch with `record_run_discrepancy` (step 6).
+- **Cover the code you add to at least 90%** — statements, branches, functions and lines: per file for
+  every file you add, and every function and branch you add to an existing file exercised by a test.
+  Measure the change, never the repository's overall number; where the repository has its own coverage
+  gates, meet those too. Run coverage over the files you changed and put each changed file's numbers in
+  the pull request body.
+- Run the repository's checks — lint, type-check, build — and **only the tests you added or changed**,
+  the pinned suites you updated included. The pull request's CI runs the whole suite; a full local run
+  is a slower copy of a measurement that is already queued.
 - **A defect you find that is not this card's** — file it with **`motir-log-bug`**, and do not fix it
   here. A sentence in a pull request or a card body describing work someone must still do is not a
   record anyone will find: if it will still be true after this card is Done, it is a bug card, filed
