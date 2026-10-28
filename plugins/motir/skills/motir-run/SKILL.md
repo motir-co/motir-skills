@@ -58,7 +58,7 @@ A defect out of the card's scope goes through `motir-log-bug`.
 
 ## Standalone mode
 
-> Condenses `prompts/run.md` § *The CLOSE-OUT SWEEP*, § *A RUN ASSIGNS THE CARD*, § *A RUNBOOK RUN PUTS
+> Condenses `prompts/run.md` § *A RUN NEVER ASKS ABOUT THE IMPLEMENTATION*, § *The CLOSE-OUT SWEEP*, § *A RUN ASSIGNS THE CARD*, § *A RUNBOOK RUN PUTS
 > ITSELF ON THE RUN RECORD*, § *Worktree rules*,
 > § *PR titles drive the status sync*, § *Design-reference rule*, § *YOUR CI WENT RED*, § *The how-to-test
 > rule*, § *A RECORDED DEVIATION … is a `bug` to FILE*, § *WHEN THE `motir-plan` SKILL IS NOT
@@ -73,9 +73,20 @@ to connect Motir: in Claude Code with the `motir` plugin installed, run `/mcp` a
 connection error, a 401 or a not-found, **stop and report** what you were about to do — never work
 around a failed call, and never move a status by some other route.
 
-**Never ask the user a question mid-run.** Resolve an unclear detail from the card, the repository and
-its conventions, and build. If you conclude the *card itself* is wrong, that is step 8 — an action,
-not a question.
+**Never ask the user a question mid-run — about the implementation or anything else.** No
+`AskUserQuestion`, no "confirm the scope", no options laid out to wait on a choice: nobody is there to
+answer. **A detail the card and its plan leave open is yours to decide, in this order:**
+
+1. **The repository's own conventions** — its coding convention (`get_coding_convention`), its
+   `CLAUDE.md` / `AGENTS.md` / contributing guide, and the patterns of the code around the change.
+2. **Where they are silent, the established industry best practice for the stack** — what mature tools
+   in the space do. Look it up when you are not sure; a remembered claim is not a check.
+
+**Take the best-practice option even when it is more work.** Never choose an option because it is the
+easiest, the smallest or the quickest to ship — there is no "simplest option" fallback. **Record every
+decision** with step 6's `record_run_discrepancy` call, as `decisions`. That is about the HOW: if the open
+question would change the WHAT — the card's outcome or an acceptance criterion — the *card itself* is
+wrong, and that is step 8, an action, not a question.
 
 ### The status ladder — who moves what
 
@@ -221,8 +232,18 @@ git worktree add ../<repo>-<KEY> -b <KEY>-<short-slug> origin/<default-branch>
 
 ### 6. Hand it back — in this order
 
-0. **If you built through a wrong HOW (step 8), record it first:** `record_run_discrepancy`, once, before
-   the pull request opens — and state the same deviations in the pull request's description.
+0. **Record what you built differently and what you decided — ONE `record_run_discrepancy` call**, before
+   the pull request opens. A build-through (step 8) sends its `points`. Every decision you made where the
+   card left the HOW open goes in the SAME call as `decisions`:
+   `{ planSaid, chose, why, alternatives? }` — what the card said about it (`"nothing"` when it was
+   silent), what you chose, why (the convention or the best practice you followed), and what you
+   considered and did not take; up to 20, each field 1–2000 characters. The door keeps ONE record per
+   run leg, so the two lists travel together, and a second call is refused
+   `DISCREPANCY_ALREADY_RECORDED`. It writes one card comment and one finding on the run. State the same
+   deviations in the pull request's description, and list the decisions under **Decisions the run
+   made**. A missing record never stops delivery: on a refusal you cannot fix, open the pull request
+   anyway and write *"decision record missing: `<code or reason>`"* there and in your report. A run that
+   decided nothing and built through nothing makes no call.
 1. **Push and open the pull request**, ready for review (not a draft), against the default branch, with
    the card's key in the title as a label — e.g. `ACME-12 Add the export button`. Pass every label in
    the `gh pr create` call itself; adding one afterwards re-triggers CI. Include a **How to test**
@@ -270,7 +291,8 @@ touches another card — *no adjacent fix* and *no widening the card* still hold
 bug**, reads no verdict, does **not** park the card at Planning, submits **no re-plan**, owes **no
 lesson**, and **never edits the card's body**.
 
-**Record it ONCE, after building and before the pull request opens:**
+**Record it ONCE, after building and before the pull request opens** — in the same call as any
+`decisions` (step 6):
 `record_run_discrepancy { key, points: [{ planAsked, built, why }] }` with every point (1–20; each field
 1–2000 characters). The tool writes the card comment itself — do **not** also `add_comment` — and, when
 the card has an open run leg, one `discrepancy_recorded` finding; it answers `{ commentId, recorded }`.
