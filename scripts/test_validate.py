@@ -308,6 +308,82 @@ def jpeg(width, height, sof=True):
     return b"\xff\xd8" + app0 + (frame + b"\x00" * 12 if sof else b"\xff\xd9")
 
 
+class PublicOnlySkillTest(TreeCase):
+    """`motir-public-only: true` (MOTIR-10330): a skill with no runbook counterpart skips the Runbook/Standalone
+    sections and `SYNC.json` — and only those. Planted as a probe skill, in both directions."""
+
+    PROBE = "motir-probe"
+    PROBE_DIR = PLUGIN + "/skills/" + PROBE
+    BODY = "# motir probe\n\nOne standalone procedure, with no runbook to look for.\n"
+
+    def skill_md(self, declaration="motir-public-only: true", name=PROBE, description="Probe the validator."):
+        lines = ["---", f"name: {name}", f"description: {description}"]
+        if declaration is not None:
+            lines.append(declaration)
+        return "\n".join(lines + ["---", ""]) + "\n" + self.BODY
+
+    def plant_skill(self, skill_md, sync=None):
+        """A new skill folder holding `skill_md` (and `sync` as its SYNC.json, if given), listed in the manifest."""
+        self.tree.write(self.PROBE_DIR + "/SKILL.md", skill_md)
+        if sync is not None:
+            self.tree.write(self.PROBE_DIR + "/SYNC.json", sync)
+        entry = "./skills/" + self.PROBE
+        self.tree.edit_plugin(lambda p: p["skills"].append(entry) if entry not in p["skills"] else None)
+
+    def assertFullRulesApply(self):
+        code, out = run(self.tree.root)
+        self.assertEqual(code, 1, out)
+        self.assertIn(f"skills/{self.PROBE}/SKILL.md: needs a '## Runbook mode' section", out)
+        self.assertIn(f"skills/{self.PROBE}: no SYNC.json", out)
+
+    def test_a_declared_skill_needs_no_runbook_sections_and_no_sync_json(self):
+        self.plant_skill(self.skill_md())
+        code, out = run(self.tree.root)
+        self.assertEqual(code, 0, out)
+
+    def test_the_same_skill_without_the_declaration_fails_on_both(self):
+        self.plant_skill(self.skill_md(declaration=None))
+        self.assertFullRulesApply()
+
+    def test_only_the_exact_value_true_declares_it(self):
+        for value in ("false", "yes", "True", "ture"):
+            with self.subTest(value=value):
+                self.plant_skill(self.skill_md(declaration=f"motir-public-only: {value}"))
+                self.assertFullRulesApply()
+
+    def test_a_quoted_true_declares_it(self):
+        # The frontmatter reader strips the quotes YAML allows around a scalar.
+        self.plant_skill(self.skill_md(declaration='motir-public-only: "true"'))
+        code, out = run(self.tree.root)
+        self.assertEqual(code, 0, out)
+
+    def test_a_declared_skill_is_still_held_to_its_name(self):
+        self.plant_skill(self.skill_md(name="motir-probing"))
+        self.assertFailsNaming(f"skills/{self.PROBE}/SKILL.md: frontmatter name is 'motir-probing'")
+
+    def test_a_declared_skill_is_still_held_to_a_description(self):
+        self.plant_skill(self.skill_md(description=""))
+        self.assertFailsNaming(f"skills/{self.PROBE}/SKILL.md: frontmatter description is empty")
+
+    def test_a_declared_skill_is_still_held_to_the_description_limit(self):
+        self.plant_skill(self.skill_md(description="x" * 1025))
+        self.assertFailsNaming(f"skills/{self.PROBE}/SKILL.md: description is 1025 characters")
+
+    def test_a_declared_skill_is_still_held_to_the_manifest(self):
+        self.tree.write(self.PROBE_DIR + "/SKILL.md", self.skill_md())
+        self.assertFailsNaming("plugin.json: skills lists")
+
+    def test_a_stray_sync_json_beside_a_declared_skill_is_not_an_error(self):
+        self.plant_skill(self.skill_md(), sync="[]")
+        code, out = run(self.tree.root)
+        self.assertEqual(code, 0, out)
+
+    def test_an_undeclared_skill_with_a_sync_json_still_needs_the_sections(self):
+        sync = json.dumps([{"corpusPath": "prompts/x.md", "heading": "X", "sha256": "a" * 64}])
+        self.plant_skill(self.skill_md(declaration=None), sync=sync)
+        self.assertFailsNaming(f"skills/{self.PROBE}/SKILL.md: needs a '## Runbook mode' section")
+
+
 class ListingTest(TreeCase):
     """`check_listing`: the icon and privacy policy URL Claude's plugin directory asks for."""
 
