@@ -384,6 +384,98 @@ class PublicOnlySkillTest(TreeCase):
         self.assertFailsNaming(f"skills/{self.PROBE}/SKILL.md: needs a '## Runbook mode' section")
 
 
+class MotirReviewGateTest(TreeCase):
+    """The story gate over the REAL `motir-review` skill (MOTIR-10344): the suite accepts it as committed,
+    and one planted defect in its frontmatter, its folder or its manifest entry is rejected by name."""
+
+    SKILL_DIR = PLUGIN + "/skills/motir-review"
+    SKILL = SKILL_DIR + "/SKILL.md"
+    DECLARATION = "motir-public-only: true\n"
+
+    def real(self):
+        return read(self.tree.path(self.SKILL))
+
+    def replace_in_skill(self, old, new):
+        text = self.real()
+        self.assertIn(old, text, "the real SKILL.md no longer carries the text this case plants into")
+        self.tree.write(self.SKILL, text.replace(old, new, 1))
+
+    def frontmatter_line(self, key):
+        return next(line for line in self.real().split("\n") if line.startswith(key + ":"))
+
+    def assertShapeRejected(self):
+        code, out = run(self.tree.root)
+        self.assertEqual(code, 1, out)
+        self.assertIn("skills/motir-review/SKILL.md: needs a '## Runbook mode' section", out)
+        self.assertIn("skills/motir-review: no SYNC.json", out)
+
+    def test_the_repository_and_its_copy_pass_listing_motir_review(self):
+        for root in (REPO, self.tree.root):
+            code, out = run(root)
+            self.assertEqual(code, 0, out)
+            self.assertRegex(out, r"✔ \d+ skills: .*\bmotir-review\b")
+
+    def test_the_real_skill_has_the_public_only_shape(self):
+        fm = validate.frontmatter(self.real())
+        self.assertEqual(fm.get("name"), "motir-review")
+        self.assertEqual(fm.get("motir-public-only"), "true")
+        self.assertTrue(fm.get("description"))
+        self.assertFalse(os.path.exists(self.tree.path(self.SKILL_DIR + "/SYNC.json")))
+        plugin = json.loads(read(self.tree.path(PLUGIN + "/.claude-plugin/plugin.json")))
+        self.assertIn("./skills/motir-review", plugin["skills"])
+
+    def test_without_the_declaration_the_real_skill_is_rejected(self):
+        self.replace_in_skill(self.DECLARATION, "")
+        self.assertShapeRejected()
+
+    def test_a_declaration_other_than_true_is_rejected(self):
+        for value in ("yes", "false"):
+            with self.subTest(value=value):
+                self.replace_in_skill("motir-public-only: true", f"motir-public-only: {value}")
+                self.assertShapeRejected()
+                self.tree.write(self.SKILL, read(os.path.join(REPO, self.SKILL)))
+
+    def test_a_renamed_frontmatter_name_is_rejected(self):
+        self.replace_in_skill("name: motir-review\n", "name: motir-reviewer\n")
+        self.assertFailsNaming("skills/motir-review/SKILL.md: frontmatter name is 'motir-reviewer'")
+
+    def test_an_empty_description_is_rejected(self):
+        self.replace_in_skill(self.frontmatter_line("description"), "description:")
+        self.assertFailsNaming("skills/motir-review/SKILL.md: frontmatter description is empty")
+
+    def test_a_1025_character_description_is_rejected(self):
+        self.replace_in_skill(self.frontmatter_line("description"), "description: " + "x" * 1025)
+        self.assertFailsNaming("skills/motir-review/SKILL.md: description is 1025 characters")
+
+    def test_no_frontmatter_is_rejected(self):
+        text = self.real()
+        self.tree.write(self.SKILL, text[text.index("\n---\n", 4) + len("\n---\n"):])
+        self.assertFailsNaming("skills/motir-review/SKILL.md: no YAML frontmatter")
+
+    def test_a_manifest_without_it_is_rejected(self):
+        self.tree.edit_plugin(lambda p: p["skills"].remove("./skills/motir-review"))
+        self.assertFailsNaming("plugin.json: skills lists")
+        code, out = run(self.tree.root)
+        line = next(l for l in out.split("\n") if "plugin.json: skills lists" in l)
+        listed, folders = line.split(", the skill folders are ")
+        self.assertNotIn("motir-review", listed)
+        self.assertIn("motir-review", folders)
+
+    def test_a_misspelt_manifest_entry_is_rejected(self):
+        self.tree.edit_plugin(lambda p: p.update(
+            skills=["./skills/motir-reviw" if s == "./skills/motir-review" else s for s in p["skills"]]))
+        self.assertFailsNaming("plugin.json: skills lists")
+
+    def test_a_stray_file_in_its_folder_is_rejected(self):
+        self.tree.write(self.SKILL_DIR + "/notes.md", "notes\n")
+        self.assertFailsNaming(self.SKILL_DIR + "/notes.md: does not belong in the plugin")
+
+    def test_a_stray_sync_json_beside_it_is_accepted(self):
+        self.tree.write(self.SKILL_DIR + "/SYNC.json", "[]")
+        code, out = run(self.tree.root)
+        self.assertEqual(code, 0, out)
+
+
 class ListingTest(TreeCase):
     """`check_listing`: the icon and privacy policy URL Claude's plugin directory asks for."""
 
