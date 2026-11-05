@@ -1,7 +1,7 @@
 {
   "name": "motir",
-  "version": "0.8.3",
-  "description": "Motir's skills for your coding agent: run the next card end to end, repair a card's red pull requests on their own branches, carry on a dead run's work on the branch it left, log a verified bug, clear the Bugs folder one pull request per bug, close a manual card, and be guided through a human card step by step. Installing it also connects the Motir MCP server, which you sign into in the browser the first time it is used, and carries a runner for the pinned `motir` CLI.",
+  "version": "0.9.0",
+  "description": "Motir's skills for your coding agent: run the next card end to end, repair a card's red pull requests on their own branches, carry on a dead run's work on the branch it left, log a verified bug, clear the Bugs folder one pull request per bug, close a manual card, be guided through a human card step by step, and review a card's pull requests against every acceptance criterion in its tree with your own agent. Installing it also connects the Motir MCP server, which you sign into in the browser the first time it is used, and carries a runner for the pinned `motir` CLI.",
   "author": {
     "name": "moooon B.V.",
     "url": "https://motir.co"
@@ -25,6 +25,7 @@
     "./skills/motir-guide",
     "./skills/motir-log-bug",
     "./skills/motir-mark",
+    "./skills/motir-review",
     "./skills/motir-run"
   ],
   "mcpServers": {

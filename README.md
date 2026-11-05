@@ -2,8 +2,9 @@
 
 Skills that let the coding agent you already use work a [Motir](https://motir.co) project: take the
 next card from To Do to a linked pull request, log a verified bug where it belongs, clear the `Bugs`
-folder one pull request per bug, be walked through a human card one checked step at a time, and
-close a manual card with a record of who confirmed it — all through Motir's MCP server.
+folder one pull request per bug, be walked through a human card one checked step at a time,
+close a manual card with a record of who confirmed it, and review a card's pull requests with your own
+agent — all through Motir's MCP server.
 
 They are plain [Agent Skills](https://agentskills.io) — one folder per skill with a `SKILL.md` — so
 any agent that reads that format can use them, and the repository is also a Claude Code plugin
@@ -21,7 +22,7 @@ then `/plugin marketplace add ./motir-skills` and the same `/plugin install`.
 
 One install brings three things:
 
-- **The seven skills** in the table below.
+- **The eight skills** in the table below.
 - **The `motir` MCP server** at `https://app.motir.co/api/mcp`. Claude Code signs into it in the
   browser the first time it is used — run `/mcp`, pick `motir`, choose **Authenticate** — and on
   Motir's consent screen you pick the workspace and approve. There is no token to create or paste.
@@ -66,17 +67,20 @@ Nothing else: no other credential, and no access to anything but your own projec
 | [`motir-fix-bugs`](plugins/motir/skills/motir-fix-bugs/SKILL.md) | `motir fix bugs` · `motir fix bugs <limit>` | Works through the project's `Bugs` folder one bug at a time, oldest first. Each bug gets exactly one outcome: ONE pull request fixing only that bug, a `blocked_by` edge to the card it genuinely waits on, or a comment with the evidence when it is already fixed, cannot be reproduced or needs a person. Ends by itself and reports every bug. |
 | [`motir-guide`](plugins/motir/skills/motir-guide/SKILL.md) | `motir guide <key>` · `motir guide` | Walks you through a human card — `executor: human`, whatever its type — one step at a time: claims it, gives ONE step with its notes and the command to copy, checks what it can with read-only means (`dig`, a URL, a CLI `status`) before ticking the step on the card, resumes where an interrupted walk stopped, and closes the card to Done (or leaves it to its pull request's merge) with a summary of what was done and checked. A card with no steps gets proposed steps, written to the card only with your OK. It corrects a wrong or misplaced unticked step, or the card's text, on your yes, and re-plans only when the card's target is wrong. |
 | [`motir-mark`](plugins/motir/skills/motir-mark/SKILL.md) | `motir mark <key> done` | Closes a card no pull request can close (a manual card: an account, a secret, a setting), walking its status to Done with a comment. A card that has a pull request is closed by its merge, and the skill says so instead. |
+| [`motir-review`](plugins/motir/skills/motir-review/SKILL.md) | `motir review <KEY>` · `motir review <PR URL>` | The interactive review you run with your own agent. Checks every acceptance criterion of the card and of every card under it against the code (met, not met or cannot tell, each with evidence), runs a verified correctness pass, and submits ONE verdict per run target to Motir. A pull request URL is resolved to its cards first; one that delivers no card is reported and nothing is reviewed. It never approves, merges, pushes or posts — Motir's bot posts the verdict, and a person still approves the merge. |
 
 ## Install in any other agent
 
 The guide with every agent's steps will live at <https://motir.co/docs/skills>. Until then, copy the
 skill folders you want (`plugins/motir/skills/<name>/`) into the directory your agent loads skills from (for example
 a project's `.claude/skills/` or `.agents/skills/`), each folder keeping its `SKILL.md` and
-`SYNC.json` together, and connect the MCP with a token as described under *What you need first*.
+`SYNC.json` together (a public-only skill such as `motir-review` has no `SYNC.json`; its folder is just
+its `SKILL.md`), and connect the MCP with a token as described under *What you need first*.
 
 ## Contributing
 
-Each skill is ONE copy with TWO modes, and every new skill follows the same shape.
+Each skill is ONE copy with TWO modes, and every new skill follows the same shape — unless it is
+declared public-only (below).
 
 ### Layout — the plugin is a folder of its own
 
@@ -85,7 +89,7 @@ Each skill is ONE copy with TWO modes, and every new skill follows the same shap
 plugins/motir/                    THE PLUGIN — exactly what Claude Code installs
   .claude-plugin/plugin.json        its manifest (version, skills, the `motir` MCP server, listing fields)
   .claude-plugin/icon.png           the listing icon
-  skills/<name>/SKILL.md, SYNC.json the seven skills
+  skills/<name>/SKILL.md, SYNC.json the eight skills (a public-only one has no SYNC.json)
   scripts/motir                     the pinned CLI runner
   README.md, LICENSE
 scripts/                          this repository's tooling: the validator, its tests, the install transcript
@@ -134,6 +138,18 @@ python3 scripts/section-hash.py --update <runbook-checkout> plugins/motir/skills
 Run `--update` only after re-reading the drifted sections and bringing the procedure up to date: the
 hash says what the procedure was written against, not merely what exists today. The runbook side
 checks these hashes against its own `origin/main` and fails when a condensed section moves.
+
+### A public-only skill
+
+A skill with **no runbook counterpart** in `motir-meta` declares it with one frontmatter line,
+`motir-public-only: true` (exactly `true`; any other value keeps the full rules). It is then ONE
+standalone procedure: it has no `## Runbook mode` and no `## Standalone mode` heading, and no
+`SYNC.json`, because there is no runbook section it condenses. Those two requirements are the only ones
+it skips — the frontmatter, the `name` equal to the folder, the description limit, the manifest entry,
+the bundle and every other check still apply.
+
+`motir-review` is the first: Motir keeps no runbook protocol for reviewing, so the public procedure is
+the only copy of the rules, and the hosted review states the same checklist and verdict rule.
 
 ### Checks
 
