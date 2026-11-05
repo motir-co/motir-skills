@@ -7,10 +7,16 @@ runs. The repository root holds the marketplace manifest and this tooling, which
 
 1. `check_skill` — Every folder under `plugins/motir/skills/` holds a `SKILL.md` whose frontmatter `name` equals the folder and
    whose `description` is non-empty (at most 1024 characters, the Agent Skills limit).
-2. `check_skill` — Every `SKILL.md` has a `## Runbook mode` section followed by a `## Standalone mode` section.
-3. `check_skill` — Every skill has a `SYNC.json`: a non-empty JSON list of `{ corpusPath, heading, sha256 }`, each
-   `heading` non-empty and each `sha256` a 64-character hex digest. (Whether the hashes still MATCH
-   the runbook is checked where the runbook lives — `scripts/section-hash.py --verify`.)
+2. `check_skill` — Every `SKILL.md` that is not declared public-only has a `## Runbook mode` section followed by a
+   `## Standalone mode` section.
+3. `check_skill` — Every skill that is not declared public-only has a `SYNC.json`: a non-empty JSON list of
+   `{ corpusPath, heading, sha256 }`, each `heading` non-empty and each `sha256` a 64-character hex digest.
+   (Whether the hashes still MATCH the runbook is checked where the runbook lives —
+   `scripts/section-hash.py --verify`.)
+   A skill DECLARES itself public-only with the frontmatter line `motir-public-only: true` — exactly `true`; any
+   other value, or none, keeps the full rules. Such a skill has no runbook counterpart in motir-meta (the
+   `motir review` skill is the first), so items 2 and 3 are skipped for it and nothing else is: item 1 and
+   every other check still hold. A stray `SYNC.json` beside one is not an error.
 4. `check_secrets` — No tracked file carries a secret-shaped string (a GitHub or Motir token).
 5. `check_manifests` — The plugin's `.claude-plugin/plugin.json` lists exactly the skill folders, and the
    repository's `.claude-plugin/marketplace.json` offers that plugin once, from `./plugins/motir`.
@@ -58,6 +64,8 @@ ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 SECRET = re.compile(r"(ghp|gho|ghs|ghu|github_pat|mtr|motir_pat)_[A-Za-z0-9_]{10,}")
 NAME = re.compile(r"^[a-z0-9]+(-[a-z0-9]+)*$")
 SHA256 = re.compile(r"^[0-9a-f]{64}$")
+# The frontmatter key a skill with no runbook counterpart declares itself by (see items 2 and 3 above).
+PUBLIC_ONLY_KEY = "motir-public-only"
 MCP_URL = "https://app.motir.co/api/mcp"
 MAX_JS_LINE = 2000
 MIN_README_WORDS = 40
@@ -125,6 +133,11 @@ def frontmatter(text):
     return None
 
 
+def is_public_only(fm):
+    """True only when the frontmatter declares `motir-public-only: true` — a typo fails closed into the full rules."""
+    return fm.get(PUBLIC_ONLY_KEY) == "true"
+
+
 def check_skill(name):
     folder = plugin_path("skills", name)
     path = os.path.join(folder, "SKILL.md")
@@ -145,6 +158,8 @@ def check_skill(name):
         fail(f"{PLUGIN}/skills/{name}/SKILL.md: frontmatter description is empty")
     elif len(desc) > 1024:
         fail(f"{PLUGIN}/skills/{name}/SKILL.md: description is {len(desc)} characters (max 1024)")
+    if is_public_only(fm):
+        return
     runbook = text.find("\n## Runbook mode")
     standalone = text.find("\n## Standalone mode")
     if runbook < 0 or standalone < 0 or standalone < runbook:
