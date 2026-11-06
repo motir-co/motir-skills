@@ -1,6 +1,6 @@
 ---
 name: motir-review
-description: Review a Motir card's pull requests against the card and every card under it, then hand Motir ONE verdict — `motir review <KEY>` or `motir review <PR URL>`. Use when the user asks to review a card, review this PR, review a story before it merges, or says a review is waiting for their own review agent. This is the INTERACTIVE review a person runs from their own coding agent with their own Motir sign-in, not Motir's hosted review container. It builds one checklist row per acceptance criterion across the card tree, runs a correctness pass over the code, and submits one verdict per run target through `submit_review_verdict`. It never approves, merges, pushes, claims, changes a status, edits a card or posts to the pull request; the verdict call is its only write, and a person still approves the merge.
+description: Review a Motir card's pull requests against the card and every card under it, then hand Motir ONE verdict — `motir review <KEY>` or `motir review <PR URL>`. Use when the user asks to review a card, review this PR, review a story before it merges, or says a review is waiting for their own review agent. This is the INTERACTIVE review a person runs from their own coding agent with their own Motir sign-in, not Motir's hosted review container. It builds one checklist row per acceptance criterion across the card tree, runs a correctness pass over the code, and submits one verdict per run target through `submit_review_verdict`. A defect it finds that the verdict cannot carry — in code the pull requests did not touch, or one that belongs to another card — it logs as a bug the way `motir log bug` files one. It never approves, merges, pushes, claims, changes a status, edits a card or posts to the pull request; the verdict and the bugs it logs are its only writes, and a person still approves the merge.
 motir-public-only: true
 ---
 
@@ -27,7 +27,7 @@ are silent, the established practice for the stack.
 
 - **A key** (`ACME-12`) names the card: `get_work_item { key }`.
 - **A GitHub pull request URL** is resolved with `find_work_items_for_pull_request { url }`.
-  - `linked` — review the cards it answers (step 5 says how many verdicts that is).
+  - `linked` — review the cards it answers (step 6 says how many verdicts that is).
   - `not_linked` — say so in plain words, with its reason, and **stop: review nothing and submit
     nothing**. `no_deliveries`: the pull request delivers no Motir card. `pull_request_unknown`: Motir
     has not seen that pull request. `repository_not_connected`: the repository is not connected to
@@ -74,8 +74,36 @@ hole, a test that cannot fail?
   it touches — never the full suite. Drop anything you cannot verify.
 - Rank each finding **blocker**, **major**, **minor** or **nit**, and write it with the file and line,
   what is wrong and what to change.
+- **A finding is a defect in the code the cards deliver.** A defect you meet that is not — in code the
+  pull requests did not touch, or one that belongs to another card — is not a finding: it is a bug to
+  log (step 5).
 
-## 5. Submit ONE verdict per run target
+## 5. Log a bug for a defect the verdict cannot carry
+
+A defect in the delivered code stays a **finding in the verdict** (step 4): `changes_requested` sends
+the card to To fix, and `motir fix` repairs it. It is **never also** logged as a bug. A defect the
+verdict cannot carry is **logged as a bug** instead, before you submit, so the verdict can name it.
+
+- **File it the way `motir log bug` files one** — follow the `motir-log-bug` skill when this session has
+  it, and its steps otherwise:
+  - **Root-cause it first.** Read the code and reproduce it where you can (run only the one test file it
+    touches). What you file is where it is (`file:line`), how to make it happen, the evidence and the
+    direction of the fix. A defect you cannot establish is not logged.
+  - **Look for the bug that already exists**, project-wide: `search_work_items` with a `text` filter on
+    the defect's own words, and `search_work_items_semantic` with it described in other words. Found it?
+    Add your evidence with `add_comment` and file nothing.
+  - **Place it in the project's `Bugs` folder** (`list_folders`, the folder whose `path` is exactly
+    `["Bugs"]`, passed as `folderId` with no `parentKey`). It blocks nothing — a defect that would block
+    the reviewed card is a finding — so it never goes under a card.
+  - **`create_work_item`** with `kind: "bug"`, the one-line `title` alone, and a `descriptionMd` that
+    opens with `**Found while:** reviewing <KEY> at <subjectVersion>`; then
+    **`link_work_items { fromKey: <the bug>, toKey: <the reviewed card>, relationship: "relates_to" }`**.
+- **Logging a bug never changes the verdict rule** (step 6): a bug never sends the card back and is not
+  a finding, and you still submit exactly one verdict per run target.
+- **Name every bug you logged** — its key, or the existing one you commented on — in the verdict's
+  `summaryMd`, and in your report (step 8).
+
+## 6. Submit ONE verdict per run target
 
 **The verdict rule:** `approved` only when **no checklist row is `not_met`** and the correctness pass
 found **no blocker or major** finding. Otherwise `changes_requested`. `cannot_tell` rows alone never
@@ -83,6 +111,7 @@ send a card back, and minor findings and nits never do; they are listed for the 
 
 - Submit with `submit_review_verdict { key, verdict, subjectVersion, summaryMd, findingsMd, checklist,
   harness, model }`:
+  - `summaryMd` — what you concluded, naming every bug step 5 logged by its key.
   - `findingsMd` — required and non-empty on `changes_requested`; every finding, ranked, with the
     checklist table at its top.
   - `checklist` — the rows of step 3, each `{ key, criterion, status, evidence }`; `evidence` is required
@@ -98,7 +127,7 @@ send a card back, and minor findings and nits never do; they are listed for the 
   `not_met` goes into the verdict of every run target it depends on — or of all of them when it cannot
   be attributed to one — so a story never passes piecemeal.
 
-## 6. Refusals — by name
+## 7. Refusals — by name
 
 | refusal | what to do |
 |---|---|
@@ -109,15 +138,17 @@ send a card back, and minor findings and nits never do; they are listed for the 
 | `INVALID_REVIEW_VERDICT` | The field it names is wrong (empty findings, a `met` row without evidence). Fix that field and submit again. |
 | a permission refusal | Your token lacks `work_item:edit` on the project. Say so and stop. |
 
-## 7. Report to the person
+## 8. Report to the person
 
-The checklist (every row, with its evidence or what would settle it), the findings by rank, and each
-verdict you submitted with its outcome: `decided` (an awaiting review was decided), `recorded` (no
-review gate was waiting; it is on the card's record), or the refusal.
+The checklist (every row, with its evidence or what would settle it), the findings by rank, every bug
+you logged (its key and title, or the existing bug you added your evidence to), and each verdict you
+submitted with its outcome: `decided` (an awaiting review was decided), `recorded` (no review gate was
+waiting; it is on the card's record), or the refusal.
 
 ## What this skill never does
 
-It never approves or merges, pushes, claims a card or a run, changes a status, edits a card, or
-comments on or posts to a pull request — from your account or anyone's. Motir's own bot posts the
-verdict on the pull requests. **The one write this skill makes is the verdict call**, and a person
-still approves the merge.
+It never approves or merges, pushes, claims a card or a run, changes a status, edits the reviewed card
+or any other, or comments on or posts to a pull request — from your account or anyone's. Motir's own
+bot posts the verdict on the pull requests. **It writes two things: the verdict call, and the bugs of
+step 5** — each bug with its `relates_to` link, or your evidence as a comment on the bug that already
+exists. A person still approves the merge.
