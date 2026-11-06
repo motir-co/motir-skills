@@ -67,7 +67,7 @@ Nothing else: no other credential, and no access to anything but your own projec
 | [`motir-fix-bugs`](plugins/motir/skills/motir-fix-bugs/SKILL.md) | `motir fix bugs` · `motir fix bugs <limit>` | Works through the project's `Bugs` folder one bug at a time, oldest first. Each bug gets exactly one outcome: ONE pull request fixing only that bug, a `blocked_by` edge to the card it genuinely waits on, or a comment with the evidence when it is already fixed, cannot be reproduced or needs a person. Ends by itself and reports every bug. |
 | [`motir-guide`](plugins/motir/skills/motir-guide/SKILL.md) | `motir guide <key>` · `motir guide` | Walks you through a human card — `executor: human`, whatever its type — one step at a time: claims it, gives ONE step with its notes and the command to copy, checks what it can with read-only means (`dig`, a URL, a CLI `status`) before ticking the step on the card, resumes where an interrupted walk stopped, and closes the card to Done (or leaves it to its pull request's merge) with a summary of what was done and checked. A card with no steps gets proposed steps, written to the card only with your OK. It corrects a wrong or misplaced unticked step, or the card's text, on your yes, and re-plans only when the card's target is wrong. |
 | [`motir-mark`](plugins/motir/skills/motir-mark/SKILL.md) | `motir mark <key> done` | Closes a card no pull request can close (a manual card: an account, a secret, a setting), walking its status to Done with a comment. A card that has a pull request is closed by its merge, and the skill says so instead. |
-| [`motir-review`](plugins/motir/skills/motir-review/SKILL.md) | `motir review <KEY>` · `motir review <PR URL>` | The interactive review you run with your own agent. Checks every acceptance criterion of the card and of every card under it against the code (met, not met or cannot tell, each with evidence), runs a verified correctness pass, and submits ONE verdict per run target to Motir. A pull request URL is resolved to its cards first; one that delivers no card is reported and nothing is reviewed. It never approves, merges, pushes or posts — Motir's bot posts the verdict, and a person still approves the merge. |
+| [`motir-review`](plugins/motir/skills/motir-review/SKILL.md) | `motir review <KEY>` · `motir review <PR URL>` | The interactive review you run with your own agent. Checks every acceptance criterion of the card and of every card under it against the code (met, not met or cannot tell, each with evidence), runs a verified correctness pass, and submits ONE verdict per run target to Motir. A defect the verdict cannot carry — in code the pull requests did not touch, or one that belongs to another card — is logged as a bug the way `motir log bug` files one, and named in the verdict. A pull request URL is resolved to its cards first; one that delivers no card is reported and nothing is reviewed. It never approves, merges, pushes or posts — Motir's bot posts the verdict, and a person still approves the merge. |
 
 ## Install in any other agent
 
@@ -149,7 +149,7 @@ it skips — the frontmatter, the `name` equal to the folder, the description li
 the bundle and every other check still apply.
 
 `motir-review` is the first: Motir keeps no runbook protocol for reviewing, so the public procedure is
-the only copy of the rules, and the hosted review states the same checklist and verdict rule.
+the only copy of the rules, and the hosted review states the same checklist, verdict rule and bug rule.
 
 ### Checks
 
