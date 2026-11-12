@@ -74,9 +74,17 @@ hole, a test that cannot fail?
   it touches — never the full suite. Drop anything you cannot verify.
 - Rank each finding **blocker**, **major**, **minor** or **nit**, and write it with the file and line,
   what is wrong and what to change.
+- **Class every minor finding by who introduced it.** *Introduced* — it is in code the pull requests
+  deliver (lines they add or change, or behaviour they ship): it sends the card back (step 6), the same
+  as a major one, even when fixing it goes beyond the card's text. A gap in what the card specified is
+  still a defect the change ships, and the repair builds the fix and records it as a discrepancy
+  (`record_run_discrepancy`). "The code does what the card said" is not an excuse for a defect the
+  pull requests introduced. *Not introduced* — it is in code the pull requests did not touch, or it
+  belongs to another card: log it as a bug (step 5), or name the open bug that already covers it.
 - **A finding is a defect in the code the cards deliver.** A defect you meet that is not — in code the
   pull requests did not touch, or one that belongs to another card — is not a finding: it is a bug to
-  log (step 5).
+  log (step 5). That includes a minor one: it is logged, or the open bug that covers it is named, before
+  the verdict is `approved`.
 
 ## 5. Log a bug for a defect the verdict cannot carry
 
@@ -105,9 +113,12 @@ verdict cannot carry is **logged as a bug** instead, before you submit, so the v
 
 ## 6. Submit ONE verdict per run target
 
-**The verdict rule:** `approved` only when **no checklist row is `not_met`** and the correctness pass
-found **no blocker or major** finding. Otherwise `changes_requested`. `cannot_tell` rows alone never
-send a card back, and minor findings and nits never do; they are listed for the person.
+**The verdict rule:** `approved` only when **no checklist row is `not_met`**, the correctness pass
+found **no blocker or major** finding, and it found **no minor finding the pull requests introduced**.
+Otherwise `changes_requested`. `cannot_tell` rows alone never send a card back, and nits never do;
+they are listed for the person. A minor finding the pull requests did not introduce is logged as a bug
+(step 5) or names the open bug that already covers it, and `approved` is not allowed while one is
+neither.
 
 - Submit with `submit_review_verdict { key, verdict, subjectVersion, summaryMd, findingsMd, checklist,
   harness, model }`:
