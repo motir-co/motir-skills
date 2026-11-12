@@ -1,7 +1,6 @@
 ---
 name: motir-review
 description: Review a Motir card's pull requests against the card and every card under it, then hand Motir ONE verdict — `motir review <KEY>` or `motir review <PR URL>`. Use when the user asks to review a card, review this PR, review a story before it merges, or says a review is waiting for their own review agent. This is the INTERACTIVE review a person runs from their own coding agent with their own Motir sign-in, not Motir's hosted review container. It builds one checklist row per acceptance criterion across the card tree, runs a correctness pass over the code, and submits one verdict per run target through `submit_review_verdict`. A defect it finds that the verdict cannot carry — in code the pull requests did not touch, or one that belongs to another card — it logs as a bug the way `motir log bug` files one. It never approves, merges, pushes, claims, changes a status, edits a card or posts to the pull request; the verdict and the bugs it logs are its only writes, and a person still approves the merge.
-motir-public-only: true
 ---
 
 # `motir review <KEY | PR URL>` — review a card and hand Motir the verdict

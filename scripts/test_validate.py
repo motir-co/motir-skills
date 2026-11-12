@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""validate.py's MCP-entry, directory-shape, runner-pin, listing and credential-name checks: each defect
+"""validate.py's MCP-entry, directory-shape, CLI-pin, listing, credential-name and directory-policy checks: each defect
 fails naming its path, and the repository itself passes. Every case copies the repository into a temporary
 git tree, plants ONE defect and runs validate.main() over it. Standard library only."""
 
@@ -147,29 +147,34 @@ class ValidateTest(TreeCase):
         self.tree.edit_plugin(lambda p: p["skills"].append("../elsewhere"))
         self.assertFailsNaming("../elsewhere")
 
-    def test_runner_not_executable(self):
-        subprocess.run(["git", "-C", self.tree.root, "update-index", "--chmod=-x", PLUGIN + "/scripts/motir"], check=True)
-        self.assertFailsNaming("scripts/motir: must be committed executable")
+    def test_readme_names_no_pin(self):
+        rel = PLUGIN + "/README.md"
+        self.tree.write(rel, read(self.tree.path(rel)).replace("@motir/cli@", "@motir/cli "))
+        self.assertFailsNaming(PLUGIN + "/README.md: names no @motir/cli@<version>")
 
-    def test_runner_two_pins(self):
-        rel = PLUGIN + "/scripts/motir"
-        self.tree.write(rel, read(self.tree.path(rel)) + 'MOTIR_CLI_VERSION="0.8.0"\n')
-        self.assertFailsNaming("scripts/motir: needs exactly one MOTIR_CLI_VERSION")
+    def test_two_pins_in_the_plugin_readme(self):
+        rel = PLUGIN + "/README.md"
+        self.tree.write(rel, read(self.tree.path(rel)) + "\nOr `npx @motir/cli@0.7.0`.\n")
+        self.assertFailsNaming(PLUGIN + "/README.md: names @motir/cli@0.7.0, but the plugin's README pins 0.8.0")
 
-    def test_runner_unpublished_pin(self):
+    def test_repository_readme_disagrees(self):
+        self.tree.write("README.md", read(self.tree.path("README.md")) + "\n`npx @motir/cli@0.7.0`\n")
+        self.assertFailsNaming("README.md: names @motir/cli@0.7.0, but the plugin's README pins 0.8.0")
+
+    def test_unpublished_pin(self):
         validate.npm_view = lambda spec: (1, "") if spec.endswith("@0.8.99") else (0, "0.9.0")
         self.set_pin("0.8.99")
-        self.assertFailsNaming("scripts/motir: MOTIR_CLI_VERSION 0.8.99 is not a published version")
+        self.assertFailsNaming(PLUGIN + "/README.md: @motir/cli@0.8.99 is not a published version")
 
     def test_registry_unreachable(self):
         validate.npm_view = lambda spec: (1, "getaddrinfo ENOTFOUND registry.npmjs.org")
-        self.assertFailsNaming("scripts/motir: could not check MOTIR_CLI_VERSION 0.8.0 — the npm registry is unreachable")
+        self.assertFailsNaming(PLUGIN + "/README.md: could not check @motir/cli@0.8.0 — the npm registry is unreachable")
 
     def set_pin(self, version):
-        rel = PLUGIN + "/scripts/motir"
-        text = re.sub(r'^MOTIR_CLI_VERSION=.*$', f'MOTIR_CLI_VERSION="{version}"', read(self.tree.path(rel)), flags=re.M)
-        with open(self.tree.path(rel), "w", encoding="utf-8") as f:
-            f.write(text)
+        for rel in (PLUGIN + "/README.md", "README.md"):
+            text = re.sub(r"@motir/cli@[0-9][0-9A-Za-z.+-]*[0-9A-Za-z]", f"@motir/cli@{version}", read(self.tree.path(rel)))
+            with open(self.tree.path(rel), "w", encoding="utf-8") as f:
+                f.write(text)
         self.tree.add()
 
 
@@ -283,10 +288,12 @@ class EveryCheckFailsTest(TreeCase):
         self.tree.add()
         self.assertFailsNaming(PLUGIN + "/README.md: missing")
 
-    def test_missing_runner(self):
-        os.remove(self.tree.path(PLUGIN + "/scripts/motir"))
+    def test_missing_readme_is_named_once(self):
+        os.remove(self.tree.path(PLUGIN + "/README.md"))
         self.tree.add()
-        self.assertFailsNaming("scripts/motir: missing")
+        code, out = run(self.tree.root)
+        self.assertEqual(code, 1, out)
+        self.assertNotIn("@motir/cli", out)
 
     def test_no_skill_folders(self):
         shutil.rmtree(self.tree.path(PLUGIN + "/skills"))
@@ -309,18 +316,24 @@ def jpeg(width, height, sof=True):
 
 
 class PublicOnlySkillTest(TreeCase):
-    """`motir-public-only: true` (MOTIR-10330): a skill with no runbook counterpart skips the Runbook/Standalone
-    sections and `SYNC.json` — and only those. Planted as a probe skill, in both directions."""
+    """A skill named in `PUBLIC_ONLY_SKILLS` (MOTIR-10330, moved out of frontmatter by MOTIR-11095) skips the
+    Runbook/Standalone sections and `SYNC.json` — and only those. Planted as a probe skill, in both directions."""
 
     PROBE = "motir-probe"
     PROBE_DIR = PLUGIN + "/skills/" + PROBE
     BODY = "# motir probe\n\nOne standalone procedure, with no runbook to look for.\n"
 
-    def skill_md(self, declaration="motir-public-only: true", name=PROBE, description="Probe the validator."):
-        lines = ["---", f"name: {name}", f"description: {description}"]
-        if declaration is not None:
-            lines.append(declaration)
-        return "\n".join(lines + ["---", ""]) + "\n" + self.BODY
+    def declare(self, *names):
+        real = validate.PUBLIC_ONLY_SKILLS
+        validate.PUBLIC_ONLY_SKILLS = tuple(names)
+        self.addCleanup(setattr, validate, "PUBLIC_ONLY_SKILLS", real)
+
+    def setUp(self):
+        super().setUp()
+        self.declare("motir-review", self.PROBE)
+
+    def skill_md(self, name=PROBE, description="Probe the validator."):
+        return "\n".join(["---", f"name: {name}", f"description: {description}", "---", ""]) + "\n" + self.BODY
 
     def plant_skill(self, skill_md, sync=None):
         """A new skill folder holding `skill_md` (and `sync` as its SYNC.json, if given), listed in the manifest."""
@@ -341,21 +354,20 @@ class PublicOnlySkillTest(TreeCase):
         code, out = run(self.tree.root)
         self.assertEqual(code, 0, out)
 
-    def test_the_same_skill_without_the_declaration_fails_on_both(self):
-        self.plant_skill(self.skill_md(declaration=None))
+    def test_the_same_skill_not_listed_fails_on_both(self):
+        self.declare("motir-review")
+        self.plant_skill(self.skill_md())
         self.assertFullRulesApply()
 
-    def test_only_the_exact_value_true_declares_it(self):
-        for value in ("false", "yes", "True", "ture"):
-            with self.subTest(value=value):
-                self.plant_skill(self.skill_md(declaration=f"motir-public-only: {value}"))
-                self.assertFullRulesApply()
+    def test_a_frontmatter_declaration_no_longer_declares_it(self):
+        self.declare("motir-review")
+        text = self.skill_md().replace("---\n\n", "motir-public-only: true\n---\n\n", 1)
+        self.plant_skill(text)
+        self.assertFullRulesApply()
+        self.assertFailsNaming(f"{self.PROBE_DIR}/SKILL.md: frontmatter key(s) motir-public-only")
 
-    def test_a_quoted_true_declares_it(self):
-        # The frontmatter reader strips the quotes YAML allows around a scalar.
-        self.plant_skill(self.skill_md(declaration='motir-public-only: "true"'))
-        code, out = run(self.tree.root)
-        self.assertEqual(code, 0, out)
+    def test_a_listed_name_with_no_folder_fails(self):
+        self.assertFailsNaming("PUBLIC_ONLY_SKILLS names 'motir-probe', which is not a skill folder")
 
     def test_a_declared_skill_is_still_held_to_its_name(self):
         self.plant_skill(self.skill_md(name="motir-probing"))
@@ -379,8 +391,9 @@ class PublicOnlySkillTest(TreeCase):
         self.assertEqual(code, 0, out)
 
     def test_an_undeclared_skill_with_a_sync_json_still_needs_the_sections(self):
+        self.declare("motir-review")
         sync = json.dumps([{"corpusPath": "prompts/x.md", "heading": "X", "sha256": "a" * 64}])
-        self.plant_skill(self.skill_md(declaration=None), sync=sync)
+        self.plant_skill(self.skill_md(), sync=sync)
         self.assertFailsNaming(f"skills/{self.PROBE}/SKILL.md: needs a '## Runbook mode' section")
 
 
@@ -390,7 +403,6 @@ class MotirReviewGateTest(TreeCase):
 
     SKILL_DIR = PLUGIN + "/skills/motir-review"
     SKILL = SKILL_DIR + "/SKILL.md"
-    DECLARATION = "motir-public-only: true\n"
 
     def real(self):
         return read(self.tree.path(self.SKILL))
@@ -418,22 +430,18 @@ class MotirReviewGateTest(TreeCase):
     def test_the_real_skill_has_the_public_only_shape(self):
         fm = validate.frontmatter(self.real())
         self.assertEqual(fm.get("name"), "motir-review")
-        self.assertEqual(fm.get("motir-public-only"), "true")
+        self.assertEqual(set(fm), {"name", "description"})
+        self.assertIn("motir-review", validate.PUBLIC_ONLY_SKILLS)
         self.assertTrue(fm.get("description"))
         self.assertFalse(os.path.exists(self.tree.path(self.SKILL_DIR + "/SYNC.json")))
         plugin = json.loads(read(self.tree.path(PLUGIN + "/.claude-plugin/plugin.json")))
         self.assertIn("./skills/motir-review", plugin["skills"])
 
     def test_without_the_declaration_the_real_skill_is_rejected(self):
-        self.replace_in_skill(self.DECLARATION, "")
+        real = validate.PUBLIC_ONLY_SKILLS
+        validate.PUBLIC_ONLY_SKILLS = ()
+        self.addCleanup(setattr, validate, "PUBLIC_ONLY_SKILLS", real)
         self.assertShapeRejected()
-
-    def test_a_declaration_other_than_true_is_rejected(self):
-        for value in ("yes", "false"):
-            with self.subTest(value=value):
-                self.replace_in_skill("motir-public-only: true", f"motir-public-only: {value}")
-                self.assertShapeRejected()
-                self.tree.write(self.SKILL, read(os.path.join(REPO, self.SKILL)))
 
     def test_a_renamed_frontmatter_name_is_rejected(self):
         self.replace_in_skill("name: motir-review\n", "name: motir-reviewer\n")
@@ -642,6 +650,83 @@ class BundleTest(TreeCase):
         market["plugins"][0]["source"] = "./"
         self.tree.write(rel, json.dumps(market))
         self.assertFailsNaming("marketplace.json: must offer plugin 'motir' once, with source './plugins/motir'")
+
+
+class DirectoryPolicyTest(TreeCase):
+    """`check_directory_policy` (MOTIR-11095): what Claude's plugin directory refuses from an organization that is
+    not Verified fails here first, naming the file. One planted defect each."""
+
+    def write_bytes(self, rel, data):
+        os.makedirs(os.path.dirname(self.tree.path(rel)), exist_ok=True)
+        with open(self.tree.path(rel), "wb") as f:
+            f.write(data)
+        self.tree.add()
+
+    def test_a_shell_script_fails(self):
+        self.tree.write(PLUGIN + "/scripts/motir", "#!/bin/sh\nexec npx @motir/cli \"$@\"\n")
+        self.assertFailsNaming(PLUGIN + "/scripts/motir: not Markdown, text, JSON, YAML or a PNG")
+
+    def test_a_python_file_fails(self):
+        self.tree.write(PLUGIN + "/tool.py", "print(1)\n")
+        self.assertFailsNaming(PLUGIN + "/tool.py: not Markdown, text, JSON, YAML")
+
+    def test_a_shebang_in_an_allowed_type_fails(self):
+        self.tree.write(PLUGIN + "/README.md", "#!/bin/sh\n" + read(self.tree.path(PLUGIN + "/README.md")))
+        self.assertFailsNaming(PLUGIN + "/README.md: starts with #!")
+
+    def test_a_shebang_after_a_byte_order_mark_fails(self):
+        self.tree.write(PLUGIN + "/LICENSE", "\ufeff#!/usr/bin/env node\n")
+        self.assertFailsNaming(PLUGIN + "/LICENSE: starts with #!")
+
+    def test_a_nul_byte_fails(self):
+        self.write_bytes(PLUGIN + "/LICENSE", b"MIT\x00\n")
+        self.assertFailsNaming(PLUGIN + "/LICENSE: holds a NUL byte")
+
+    def test_non_utf8_text_fails(self):
+        self.write_bytes(PLUGIN + "/LICENSE", "MIT — moooon".encode("utf-16-le"))
+        self.assertFailsNaming(PLUGIN + "/LICENSE: holds a NUL byte")
+        self.write_bytes(PLUGIN + "/LICENSE", "Licence \u00e9".encode("latin-1"))
+        self.assertFailsNaming(PLUGIN + "/LICENSE: not UTF-8")
+
+    def test_package_manager_files_fail(self):
+        for name in ("package.json", "pnpm-workspace.yaml", "requirements.txt"):
+            with self.subTest(name=name):
+                self.tree.write(PLUGIN + "/" + name, "{}\n")
+                self.assertFailsNaming(PLUGIN + "/" + name + ": a package manager configuration file")
+                os.remove(self.tree.path(PLUGIN + "/" + name))
+                self.tree.add()
+
+    def test_an_image_whose_bytes_are_not_its_type_fails(self):
+        for name, data in (("a.png", b"#!/bin/sh\n"), ("a.gif", b"GIF00"), ("a.webp", b"RIFF0000WAVE"),
+                           ("a.jpg", b"\x89PNG"), ("a.ico", b"MZ")):
+            with self.subTest(name=name):
+                self.write_bytes(PLUGIN + "/.claude-plugin/" + name, data)
+                self.assertFailsNaming(f"{PLUGIN}/.claude-plugin/{name}: its bytes are not a")
+
+    def test_well_formed_images_pass_the_policy(self):
+        validate.errors = []
+        for name, data in (("a.gif", b"GIF89a.."), ("a.webp", b"RIFF\x00\x00\x00\x00WEBPVP8 "),
+                           ("a.jpg", b"\xff\xd8\xff\xe0"), ("a.ico", b"\x00\x00\x01\x00")):
+            self.write_bytes(PLUGIN + "/.claude-plugin/" + name, data)
+        code, out = run(self.tree.root)
+        self.assertNotIn("its bytes are not", out)
+        self.assertNotIn("not Markdown, text", out)
+
+    def test_an_extra_frontmatter_key_fails(self):
+        rel = PLUGIN + "/skills/motir-run/SKILL.md"
+        self.tree.write(rel, read(self.tree.path(rel)).replace("\n---\n", "\nallowed-tools: Bash\n---\n", 1))
+        self.assertFailsNaming(rel + ": frontmatter key(s) allowed-tools — only description, name")
+
+    def test_a_nested_frontmatter_key_fails(self):
+        rel = PLUGIN + "/skills/motir-mark/SKILL.md"
+        self.tree.write(rel, read(self.tree.path(rel)).replace("\n---\n", "\nmetadata:\n  tags: motir\n---\n", 1))
+        self.assertFailsNaming(rel + ": frontmatter key(s) metadata")
+
+    def test_every_shipped_file_passes(self):
+        validate.ROOT = REPO
+        validate.errors = []
+        validate.check_directory_policy()
+        self.assertEqual(validate.errors, [])
 
 
 class HooksTest(TreeCase):
