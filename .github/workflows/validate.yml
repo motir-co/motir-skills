@@ -18,7 +18,7 @@ jobs:
       - uses: actions/setup-node@v4
         with:
           node-version: "22"
-      - name: Skills, SYNC.json, secrets, manifest, directory shape and the runner's npm pin agree
+      - name: Skills, SYNC.json, secrets, manifest, directory shape and policy, and the README's CLI npm pin agree
         run: python3 scripts/validate.py
       - name: Install coverage (CI only — the scripts themselves stay standard-library)
         run: python3 -m pip install coverage
@@ -26,7 +26,6 @@ jobs:
         run: |
           python3 -m coverage run -a --branch scripts/test_section_hash.py
           python3 -m coverage run -a --branch scripts/test_validate.py
-          python3 -m coverage run -a --branch scripts/test_motir.py
           python3 -m coverage run -a --branch scripts/test_integration.py
       - name: validate.py stays at or above 90% line and branch coverage
         run: python3 -m coverage report -m --include=scripts/validate.py --fail-under=90

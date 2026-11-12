@@ -1,7 +1,7 @@
 #!/bin/sh
 # The story's install transcript: a clean Claude Code adds this checkout as a marketplace, installs
-# motir@motir-skills, and the installed plugin carries the eight skills, the `motir` MCP server and a
-# runner that prints the pinned CLI version. Every command, its output and its exit code go to the
+# motir@motir-skills, and the installed plugin carries the eight skills and the `motir` MCP server, no
+# script (MOTIR-11095), and the CLI version its README pins runs through npx. Every command, its output and its exit code go to the
 # transcript; the first assertion that misses fails the run.
 #
 #   scripts/install-e2e.sh [checkout]   (default: the repository this script sits in)
@@ -17,7 +17,7 @@ TRANSCRIPT=${TRANSCRIPT:-$(pwd)/install-transcript.txt}
 SKILLS="motir-continue motir-fix motir-fix-bugs motir-guide motir-log-bug motir-mark motir-review motir-run"
 MCP_URL="https://app.motir.co/api/mcp"
 PLUGIN="$CHECKOUT/plugins/motir"
-CLI_VERSION=$(sed -n 's/^MOTIR_CLI_VERSION="\(.*\)"$/\1/p' "$PLUGIN/scripts/motir")
+CLI_VERSION=$(grep -o '@motir/cli@[0-9][0-9A-Za-z.+-]*[0-9A-Za-z]' "$PLUGIN/README.md" | head -n 1 | sed 's/^@motir\/cli@//')
 VERSION=$(python3 -c 'import json,sys; print(json.load(open(sys.argv[1]))["version"])' "$PLUGIN/.claude-plugin/plugin.json")
 
 # npx's cache stays where it was, so the pinned packages are fetched once per machine, not per HOME.
@@ -116,17 +116,18 @@ log "\$ test ! -e $INSTALL_PATH/bin"
 log ""
 pass "no bin/ under installPath"
 
-step "The runner, for real" "$INSTALL_PATH/scripts/motir" --version
-[ "$code" -eq 0 ] || miss "scripts/motir --version exited $code"
-[ "$(tail -n 1 "$OUT")" = "$CLI_VERSION" ] || miss "scripts/motir --version printed '$(tail -n 1 "$OUT")', not $CLI_VERSION"
-pass "the installed runner prints $CLI_VERSION"
+log "== No script in the installed copy"
+log "\$ grep -rl '^#!' $INSTALL_PATH"
+SCRIPTS=$(grep -rl --exclude-dir=.git '^#!' "$INSTALL_PATH" 2>/dev/null)
+log "$SCRIPTS"
+log ""
+[ -z "$SCRIPTS" ] || miss "the installed copy carries a script: $SCRIPTS"
+pass "no file under installPath starts with #!"
 
-EMPTY="$WORK/no-node"
-mkdir -p "$EMPTY"
-step "The runner without Node" env PATH="$EMPTY" /bin/sh "$INSTALL_PATH/scripts/motir" --version
-[ "$code" -ne 0 ] || miss "the runner without Node exited 0"
-[ "$(wc -l <"$OUT")" -eq 1 ] && grep -q "Node.js 22" "$OUT" || miss "the runner without Node did not refuse in one line naming Node.js 22"
-pass "without Node the runner refuses in one line (exit $code)"
+step "The CLI the README pins, through npx" npx --yes "@motir/cli@$CLI_VERSION" --version
+[ "$code" -eq 0 ] || miss "npx @motir/cli@$CLI_VERSION --version exited $code"
+[ "$(tail -n 1 "$OUT")" = "$CLI_VERSION" ] || miss "@motir/cli@$CLI_VERSION --version printed '$(tail -n 1 "$OUT")'"
+pass "npx @motir/cli@$CLI_VERSION prints $CLI_VERSION"
 
 log "ALL PASSED"
 echo "transcript: $TRANSCRIPT"

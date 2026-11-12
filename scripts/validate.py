@@ -13,10 +13,11 @@ runs. The repository root holds the marketplace manifest and this tooling, which
    `{ corpusPath, heading, sha256 }`, each `heading` non-empty and each `sha256` a 64-character hex digest.
    (Whether the hashes still MATCH the runbook is checked where the runbook lives —
    `scripts/section-hash.py --verify`.)
-   A skill DECLARES itself public-only with the frontmatter line `motir-public-only: true` — exactly `true`; any
-   other value, or none, keeps the full rules. Such a skill has no runbook counterpart in motir-meta (the
-   `motir review` skill is the first), so items 2 and 3 are skipped for it and nothing else is: item 1 and
-   every other check still hold. A stray `SYNC.json` beside one is not an error.
+   A skill is public-only when its folder name is in `PUBLIC_ONLY_SKILLS` below — a list kept HERE, outside the
+   plugin, because a frontmatter key of our own is refused by Claude's plugin directory (MOTIR-11095). Such a
+   skill has no runbook counterpart in motir-meta (the `motir review` skill is the first), so items 2 and 3 are
+   skipped for it and nothing else is: item 1 and every other check still hold. A stray `SYNC.json` beside
+   one is not an error. A listed name with no skill folder fails, so the list cannot go stale.
 4. `check_secrets` — No tracked file carries a secret-shaped string (a GitHub or Motir token).
 5. `check_manifests` — The plugin's `.claude-plugin/plugin.json` lists exactly the skill folders, and the
    repository's `.claude-plugin/marketplace.json` offers that plugin once, from `./plugins/motir`.
@@ -27,9 +28,10 @@ runs. The repository root holds the marketplace manifest and this tooling, which
    `bin/` at the plugin's root, no minified or bundled JavaScript (`*.min.js`, `*.bundle.js`, or a `.js` / `.mjs` /
    `.cjs` line over 2,000 characters), every component path in `plugin.json` inside the plugin root,
    and a `LICENSE` plus a `README.md` of at least 40 words in the plugin.
-8. `check_runner` — The plugin's `scripts/motir` is committed executable (mode 100755) with exactly one `MOTIR_CLI_VERSION=` pin,
-   and that version of `@motir/cli` is published on npm. An unreachable registry is reported as such,
-   never as an unpublished version.
+8. `check_cli_pin` — The plugin's `README.md` names the `motir` CLI as `@motir/cli@<version>` (what a user runs
+   with `npx`), every such mention in it and in the repository's `README.md` names the SAME version, and that
+   version is published on npm. An unreachable registry is reported as such, never as an unpublished
+   version. The plugin carries no runner script: the directory refuses one (MOTIR-11095).
 9. `check_listing` — The plugin's `.claude-plugin/plugin.json` names an `icon` that is a square PNG or JPEG inside the plugin,
    512 to 2048 px on a side and under 2 MB, and sets `privacyPolicyUrl` and `termsOfServiceUrl` to https
    URLs. Claude's plugin directory lists all three, and reads the icon only the first time the plugin is
@@ -40,7 +42,7 @@ runs. The repository root holds the marketplace manifest and this tooling, which
    reads one beside a remote URL as a credential leaving the machine and holds the plugin for review;
    use the command (`pwd`) or a plainer name instead.
 11. `check_bundle` — The plugin folder holds only what a user runs: its manifest, the icon it names, the
-   skills (`SKILL.md` and `SYNC.json` each), the runner, `README.md` and `LICENSE`. Anything else — a
+   skills (`SKILL.md` and `SYNC.json` each), `README.md` and `LICENSE`. Anything else — a
    test, a CI script — is scanned by the directory as part of the plugin, and has held it for review.
    The one other file it may hold is `hooks/hooks.json`, which `check_hooks` reads. The plugin ships no
    hook today: a hook on every tool use cost two network calls per tool use and failed loudly where the
@@ -49,6 +51,12 @@ runs. The repository root holds the marketplace manifest and this tooling, which
    Claude Code events to matcher groups of `mcp_tool` hooks, and every one of them calls a tool on THIS
    plugin's own MCP server by its scoped name, `plugin:<plugin name>:<server key>` — the bare key names
    no server once the plugin is installed, and the hook would fail on every tool use (Story MOTIR-7446).
+13. `check_directory_policy` — What Claude's plugin directory accepts from an organization that is not Verified
+   (MOTIR-11095): every file in the plugin is Markdown, text, JSON, YAML or a PNG, JPEG, GIF, WebP or ICO image
+   (`LICENSE` with no extension counts as text); a text file is UTF-8 with no NUL byte and does not start
+   with `#!`; an image's bytes are the format its extension names; no package-manager configuration file
+   (`package.json`, `pnpm-workspace.yaml`, a lockfile, …); and a `SKILL.md`'s frontmatter holds only
+   `name` and `description`.
 
 Each item names the `check_*` function that performs it; `main()` calls every one of them once.
 Exits 1 and names every failure. Standard library only.
@@ -64,20 +72,37 @@ ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 SECRET = re.compile(r"(ghp|gho|ghs|ghu|github_pat|mtr|motir_pat)_[A-Za-z0-9_]{10,}")
 NAME = re.compile(r"^[a-z0-9]+(-[a-z0-9]+)*$")
 SHA256 = re.compile(r"^[0-9a-f]{64}$")
-# The frontmatter key a skill with no runbook counterpart declares itself by (see items 2 and 3 above).
-PUBLIC_ONLY_KEY = "motir-public-only"
+# The skills with no runbook counterpart (see items 2 and 3 above), by folder name.
+PUBLIC_ONLY_SKILLS = ("motir-review",)
 MCP_URL = "https://app.motir.co/api/mcp"
 MAX_JS_LINE = 2000
 MIN_README_WORDS = 40
 CLI_PACKAGE = "@motir/cli"
 PLUGIN = "plugins/motir"
 MARKETPLACE_SOURCE = "./" + PLUGIN
-RUNNER = "scripts/motir"
 HOOKS = "hooks/hooks.json"
 HOOK_EVENTS = {"PreToolUse", "PostToolUse", "PostToolUseFailure", "UserPromptSubmit", "Notification",
                "Stop", "SubagentStop", "SubagentStart", "PreCompact", "SessionStart", "SessionEnd",
                "PermissionRequest"}
-VERSION_LINE = re.compile(r'^MOTIR_CLI_VERSION="?([^"\s]*)"?\s*$', re.MULTILINE)
+CLI_PIN = re.compile(r"@motir/cli@([0-9A-Za-z.+-]*[0-9A-Za-z])")
+# Claude's plugin directory, for an organization that is not Verified (MOTIR-11095).
+TEXT_EXTENSIONS = {".md", ".markdown", ".txt", ".json", ".yaml", ".yml"}
+TEXT_NAMES = {"LICENSE", "LICENCE"}
+IMAGE_MAGIC = {
+    ".png": (b"\x89PNG\r\n\x1a\n",),
+    ".jpg": (b"\xff\xd8\xff",),
+    ".jpeg": (b"\xff\xd8\xff",),
+    ".gif": (b"GIF87a", b"GIF89a"),
+    ".ico": (b"\x00\x00\x01\x00",),
+}
+PACKAGE_MANAGER_FILES = {
+    "package.json", "package-lock.json", "npm-shrinkwrap.json", ".npmrc", "pnpm-workspace.yaml",
+    "pnpm-lock.yaml", ".pnpmfile.cjs", "yarn.lock", ".yarnrc", ".yarnrc.yml", "bun.lock", "bun.lockb",
+    "bunfig.toml", "deno.json", "deno.jsonc", "requirements.txt", "pyproject.toml", "Pipfile",
+    "Pipfile.lock", "poetry.lock", "uv.lock", "setup.cfg", "Gemfile", "Gemfile.lock", "Cargo.toml",
+    "Cargo.lock", "go.mod", "go.sum", "composer.json", "composer.lock",
+}
+FRONTMATTER_KEYS = {"name", "description"}
 ICON_MIN, ICON_MAX, ICON_MAX_BYTES = 512, 2048, 2 * 1024 * 1024
 # A shell variable whose name has one of these words as an underscore-separated part reads, to Claude's
 # plugin-directory scanner, as a credential taken from the user's machine — `PWD` as a password, `PIN` as
@@ -133,9 +158,9 @@ def frontmatter(text):
     return None
 
 
-def is_public_only(fm):
-    """True only when the frontmatter declares `motir-public-only: true` — a typo fails closed into the full rules."""
-    return fm.get(PUBLIC_ONLY_KEY) == "true"
+def is_public_only(name):
+    """True only for a skill folder named in PUBLIC_ONLY_SKILLS — any other name keeps the full rules."""
+    return name in PUBLIC_ONLY_SKILLS
 
 
 def check_skill(name):
@@ -158,7 +183,7 @@ def check_skill(name):
         fail(f"{PLUGIN}/skills/{name}/SKILL.md: frontmatter description is empty")
     elif len(desc) > 1024:
         fail(f"{PLUGIN}/skills/{name}/SKILL.md: description is {len(desc)} characters (max 1024)")
-    if is_public_only(fm):
+    if is_public_only(name):
         return
     runbook = text.find("\n## Runbook mode")
     standalone = text.find("\n## Standalone mode")
@@ -309,30 +334,31 @@ def npm_view(spec):
     return done.returncode, done.stdout.strip()
 
 
-def check_runner():
-    path = plugin_path(RUNNER)
-    runner = f"{PLUGIN}/{RUNNER}"
-    if not os.path.isfile(path):
-        fail(f"{runner}: missing")
-        return
-    staged = subprocess.run(
-        ["git", "-C", ROOT, "ls-files", "-s", "--", runner], check=True, capture_output=True, text=True,
-    ).stdout.split()
-    if not staged or staged[0] != "100755":
-        fail(f"{runner}: must be committed executable (git mode 100755), is {staged[0] if staged else 'untracked'}")
-    pins = VERSION_LINE.findall(read_text(path))
-    if len(pins) != 1 or not pins[0]:
-        fail(f"{runner}: needs exactly one MOTIR_CLI_VERSION=\"<version>\" line, found {len(pins)}")
+def check_cli_pin():
+    where = f"{PLUGIN}/README.md"
+    try:
+        pins = CLI_PIN.findall(read_text(plugin_path("README.md")))
+    except OSError:
+        return  # check_directory_shape already named it
+    if not pins:
+        fail(f"{where}: names no @motir/cli@<version> — say which CLI version to run with npx")
         return
     pin = pins[0]
+    try:
+        repo_pins = CLI_PIN.findall(read_text(os.path.join(ROOT, "README.md")))
+    except OSError:
+        repo_pins = []
+    for found, file in [(p, where) for p in pins] + [(p, "README.md") for p in repo_pins]:
+        if found != pin:
+            fail(f"{file}: names @motir/cli@{found}, but the plugin's README pins {pin} — name one version")
     code, out = npm_view(f"{CLI_PACKAGE}@{pin}")
     if code == 0 and out == pin:
         return
     control, _ = npm_view(CLI_PACKAGE)
     if control != 0:
-        fail(f"{runner}: could not check MOTIR_CLI_VERSION {pin} — the npm registry is unreachable")
+        fail(f"{where}: could not check {CLI_PACKAGE}@{pin} — the npm registry is unreachable")
     else:
-        fail(f"{runner}: MOTIR_CLI_VERSION {pin} is not a published version of {CLI_PACKAGE}")
+        fail(f"{where}: {CLI_PACKAGE}@{pin} is not a published version of {CLI_PACKAGE}")
 
 
 def image_size(path):
@@ -416,13 +442,13 @@ def check_credential_names():
 
 def check_bundle():
     plugin = read_plugin() or {}
-    allowed = {".claude-plugin/plugin.json", RUNNER, "README.md", "LICENSE", HOOKS}
+    allowed = {".claude-plugin/plugin.json", "README.md", "LICENSE", HOOKS}
     if isinstance(plugin.get("icon"), str):
         allowed.add(os.path.normpath(plugin["icon"]))
     for rel in plugin_files():
         if rel not in allowed and not SKILL_FILE.match(rel):
             fail(f"{PLUGIN}/{rel}: does not belong in the plugin — only the manifest, its icon, the skills,"
-                 " the runner, its hooks, README.md and LICENSE ship")
+                 " its hooks, README.md and LICENSE ship")
 
 
 def check_hooks():
@@ -460,6 +486,51 @@ def check_hooks():
                     fail(f"{where}: {event} hook names no tool")
 
 
+def check_directory_policy():
+    for name in PUBLIC_ONLY_SKILLS:
+        if not os.path.isdir(plugin_path("skills", name)):
+            fail(f"scripts/validate.py: PUBLIC_ONLY_SKILLS names {name!r}, which is not a skill folder")
+    for rel in plugin_files():
+        where = f"{PLUGIN}/{rel}"
+        base = os.path.basename(rel)
+        ext = os.path.splitext(base)[1].lower()
+        if base in PACKAGE_MANAGER_FILES:
+            fail(f"{where}: a package manager configuration file — the directory refuses one from an"
+                 " organization that is not Verified")
+            continue
+        try:
+            with open(plugin_path(rel), "rb") as f:
+                data = f.read()
+        except FileNotFoundError:
+            continue
+        if ext in IMAGE_MAGIC or ext == ".webp":
+            ok = (data[:4] == b"RIFF" and data[8:12] == b"WEBP") if ext == ".webp" else \
+                data.startswith(IMAGE_MAGIC[ext])
+            if not ok:
+                fail(f"{where}: its bytes are not a {ext[1:].upper()} image")
+            continue
+        if ext not in TEXT_EXTENSIONS and base not in TEXT_NAMES:
+            fail(f"{where}: not Markdown, text, JSON, YAML or a PNG, JPEG, GIF, WebP or ICO image — the directory"
+                 " refuses any other file from an organization that is not Verified")
+            continue
+        if b"\x00" in data:
+            fail(f"{where}: holds a NUL byte — save it as UTF-8 text")
+            continue
+        try:
+            text = data.decode("utf-8")
+        except UnicodeDecodeError:
+            fail(f"{where}: not UTF-8 — save it as UTF-8 text")
+            continue
+        if text.lstrip("\ufeff").startswith("#!"):
+            fail(f"{where}: starts with #! — the directory refuses a script from an organization that is"
+                 " not Verified")
+        if base == "SKILL.md":
+            extra = sorted(set(frontmatter(text) or {}) - FRONTMATTER_KEYS)
+            if extra:
+                fail(f"{where}: frontmatter key(s) {', '.join(extra)} — only {', '.join(sorted(FRONTMATTER_KEYS))}"
+                     " are accepted from an organization that is not Verified")
+
+
 def main(root=None):
     global ROOT, errors
     if root is not None:
@@ -475,11 +546,12 @@ def main(root=None):
     check_manifests(skills)
     check_mcp_server()
     check_directory_shape()
-    check_runner()
+    check_cli_pin()
     check_listing()
     check_credential_names()
     check_bundle()
     check_hooks()
+    check_directory_policy()
     for e in errors:
         print(f"✘ {e}")
     if errors:

@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""The story's integration gate over the assembled tree: the seams between the runner, the README and
+"""The story's integration gate over the assembled tree: the seams between the plugin's README pin and
 validate.py, read against the REAL npm registry and the pinned Claude Code — where each check's own
 unit tests only ever see their own fixture. Standard library only."""
 
@@ -17,25 +17,25 @@ CLAUDE_CODE = "@anthropic-ai/claude-code@2.1.283"
 
 
 class PinSeam(unittest.TestCase):
-    """The pin the runner actually carries is the one validate.py reads and asks npm about."""
+    """The pin the plugin's README actually carries is the one validate.py reads and asks the real npm about."""
 
     def setUp(self):
         self.tree = Tree()
         self.addCleanup(self.tree.cleanup)
 
-    def test_real_runner_passes(self):
+    def test_real_readme_pin_passes(self):
         code, out = run(self.tree.root)
         self.assertEqual(code, 0, out)
 
-    def test_unpublished_pin_fails_naming_the_runner(self):
-        rel = PLUGIN + "/scripts/motir"
-        text = read(self.tree.path(rel))
-        edited = re.sub(r'^MOTIR_CLI_VERSION=.*$', 'MOTIR_CLI_VERSION="0.8.99"', text, count=1, flags=re.M)
-        self.assertNotEqual(edited, text, "the runner's pin line did not match the reader's syntax")
-        self.tree.write(rel, edited)
+    def test_unpublished_pin_fails_naming_the_readme(self):
+        for rel in (PLUGIN + "/README.md", "README.md"):
+            text = read(self.tree.path(rel))
+            edited = re.sub(r"@motir/cli@[0-9][0-9A-Za-z.+-]*[0-9A-Za-z]", "@motir/cli@0.8.99", text)
+            self.assertNotEqual(edited, text, f"{rel}'s pin did not match the reader's syntax")
+            self.tree.write(rel, edited)
         code, out = run(self.tree.root)
         self.assertEqual(code, 1, out)
-        self.assertIn(f"✘ {PLUGIN}/scripts/motir: MOTIR_CLI_VERSION 0.8.99 is not a published version", out)
+        self.assertIn(f"✘ {PLUGIN}/README.md: @motir/cli@0.8.99 is not a published version", out)
 
 
 class ReadmeSecretSeam(unittest.TestCase):

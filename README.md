@@ -20,15 +20,17 @@ marketplace.
 From a local clone, use the path instead: `git clone https://github.com/moooon-B-V/motir-skills.git`,
 then `/plugin marketplace add ./motir-skills` and the same `/plugin install`.
 
-One install brings three things:
+One install brings two things:
 
 - **The eight skills** in the table below.
 - **The `motir` MCP server** at `https://app.motir.co/api/mcp`. Claude Code signs into it in the
   browser the first time it is used — run `/mcp`, pick `motir`, choose **Authenticate** — and on
   Motir's consent screen you pick the workspace and approve. There is no token to create or paste.
-- **The `motir` CLI**, through the plugin's `scripts/motir` runner. It runs one pinned `@motir/cli`
-  version with `npx`, so nothing is installed globally, and it needs **Node.js 22 or newer**. The CLI
-  signs in on its own (`motir login`); it does not share the MCP's sign-in.
+
+The `motir` CLI is not bundled — Claude's plugin directory accepts no script from us — so run the
+version the skills are written for with `npx @motir/cli@0.8.0 <command>`, or install it with
+`npm install -g @motir/cli@0.8.0`. It needs **Node.js 22 or newer** and signs in on its own
+(`motir login`); it does not share the MCP's sign-in.
 
 Claude Code lists the skills once the plugin is installed, and `/mcp` shows `motir`. An organisation
 on claude.ai can also add the same plugin for all its members from its plugin settings — see
@@ -52,7 +54,7 @@ Anthropic's [plugin admin guide](https://claude.com/docs/plugins/admin).
   permissions holds everything these skills call; the full list of tools and the permission each one
   needs is at <https://app.motir.co/docs/mcp/tools>.
 - `git`, and the GitHub CLI (`gh`) where a skill reads pull requests.
-- **Node.js 22 or newer**, only for the `motir` CLI runner.
+- **Node.js 22 or newer**, only for the `motir` CLI.
 
 Nothing else: no other credential, and no access to anything but your own project.
 
@@ -90,7 +92,6 @@ plugins/motir/                    THE PLUGIN — exactly what Claude Code instal
   .claude-plugin/plugin.json        its manifest (version, skills, the `motir` MCP server, listing fields)
   .claude-plugin/icon.png           the listing icon
   skills/<name>/SKILL.md, SYNC.json the eight skills (a public-only one has no SYNC.json)
-  scripts/motir                     the pinned CLI runner
   README.md, LICENSE
 scripts/                          this repository's tooling: the validator, its tests, the install transcript
 ```
@@ -99,10 +100,16 @@ Claude's plugin directory scans everything inside the plugin folder as code a us
 a plugin for review over what it finds there, tests included. So nothing goes into `plugins/motir/`
 except what a user runs: `scripts/validate.py` fails on any other file there.
 
+From an organization that is not Verified, the directory also refuses any file that is not Markdown,
+text, JSON, YAML or a PNG, JPEG, GIF, WebP or ICO image, any file starting with `#!`, any package
+manager configuration file, and any `SKILL.md` frontmatter key but `name` and `description`
+(MOTIR-11095 — it refused 0.10.0 for a shell runner and a frontmatter key of our own). The validator
+holds the plugin to the same rules, so a script or a new frontmatter key fails here first.
+
 ### The two-mode `SKILL.md`
 
 1. **Frontmatter** — `name` equal to the folder name, and a `description` carrying the phrases a user
-   says to trigger it (at most 1024 characters).
+   says to trigger it (at most 1024 characters). Nothing else: the directory refuses any other key.
 2. **`## Runbook mode`** — Motir's own team keeps the full procedures in a private runbook
    (`motir-meta`). The section opens with the lookup block every skill shares: `$MOTIR_META`, else a
    `motir-meta` checkout at or above the working directory. When it finds one, the skill routes into
@@ -141,8 +148,9 @@ checks these hashes against its own `origin/main` and fails when a condensed sec
 
 ### A public-only skill
 
-A skill with **no runbook counterpart** in `motir-meta` declares it with one frontmatter line,
-`motir-public-only: true` (exactly `true`; any other value keeps the full rules). It is then ONE
+A skill with **no runbook counterpart** in `motir-meta` is declared by adding its folder name to
+`PUBLIC_ONLY_SKILLS` in `scripts/validate.py` — in the repository, not in the skill's frontmatter, which
+the directory holds to `name` and `description`. It is then ONE
 standalone procedure: it has no `## Runbook mode` and no `## Standalone mode` heading, and no
 `SYNC.json`, because there is no runbook section it condenses. Those two requirements are the only ones
 it skips — the frontmatter, the `name` equal to the folder, the description limit, the manifest entry,
@@ -155,11 +163,10 @@ the only copy of the rules, and the hosted review states the same checklist, ver
 
 ```sh
 python3 scripts/validate.py          # skills, SYNC.json, secrets, manifests, the MCP entry,
-                                     # the directory's shape, the runner's npm pin, the listing's
-                                     # icon, privacy and terms URLs, no credential-named variables or
-                                     # functions, and nothing in the plugin but what ships
+                                     # the directory's shape and policy, the README's CLI npm pin,
+                                     # the listing's icon, privacy and terms URLs, no credential-named
+                                     # variables or functions, and nothing in the plugin but what ships
 python3 scripts/test_validate.py     # validate.py's checks, each against a planted defect
-python3 scripts/test_motir.py        # the CLI runner, with stub node / npx
 python3 scripts/test_integration.py  # the seams between them, against npm and Claude Code
 python3 scripts/test_section_hash.py # the section definition
 claude plugin validate . --strict              # Claude Code accepts the marketplace, warnings included
