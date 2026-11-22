@@ -61,7 +61,7 @@ A defect out of the card's scope goes through `motir-log-bug`.
 > Condenses `prompts/run.md` § *A RUN NEVER ASKS ABOUT THE IMPLEMENTATION*, § *The CLOSE-OUT SWEEP*, § *A RUN ASSIGNS THE CARD*, § *A RUNBOOK RUN PUTS
 > ITSELF ON THE RUN RECORD*, § *Worktree rules*,
 > § *PR titles drive the status sync*, § *Design-reference rule*, § *YOUR CI WENT RED*, § *The how-to-test
-> rule*, § *A RECORDED DEVIATION … is a `bug` to FILE*, § *WHEN THE `motir-plan` SKILL IS NOT
+> rule*, § *BUILD THROUGH OR STOP*, § *A RECORDED DEVIATION … is a `bug` to FILE*, § *WHEN THE `motir-plan` SKILL IS NOT
 > AVAILABLE*, § *`motir run`* and § *`motir run <parent>`*, and `prompts/_shared.md` § *Status tracks
 > the PR lifecycle* — as of the hashes in [`SYNC.json`](SYNC.json).
 
@@ -318,6 +318,26 @@ the outcome is reachable another way. A build-through changes the route, never t
 touches another card — *no adjacent fix* and *no widening the card* still hold. It files **no planning
 bug**, reads no verdict, does **not** park the card at Planning, submits **no re-plan**, owes **no
 lesson**, and **never edits the card's body**.
+
+**A name your card takes from an in-flight blocker is a reference, not a statement of shipped code.** A
+plan is often written while a card it waits on is still being built, so it cites that blocker's names
+from its planned contract or its branch. By the time you run, the blocker has merged and may have
+shipped them differently. When the card attributes a name or a fact — a file, a symbol, a signature, a
+migration number, a registry's contents, a doc sentence — to a work item it depends on (`blocked_by`,
+directly or through its parent), or says it is in flight, on that item's branch or provisional, and that
+item was not done when the plan was approved:
+
+- the name is a reference to that blocker's contract, not a statement of what shipped;
+- build on what the blocker **actually shipped** — its real name, signature, file, number, registry
+  contents or doc text — keeping the card's WHAT;
+- a difference between the card's reference and what shipped is **not a discrepancy**: record no point
+  for it with `record_run_discrepancy` and list no deviation for it in the pull request;
+- the ONE question above still decides when what the blocker shipped makes the WHAT unreachable or
+  contradictory — the capability the card builds on does not exist at all, or the blocker shipped the
+  very thing this card was to build. That is a STOP.
+
+A name the card states as already shipped, with no blocker attribution, is judged by the question above
+as before.
 
 **Record it ONCE, after building and before the pull request opens** — in the same call as any
 `decisions` (step 6):
