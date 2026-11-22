@@ -161,6 +161,23 @@ Before picking anything up, look at the branches and worktrees earlier runs left
   `list_designs { projectKey, blockersOf: <key> }`, then `get_design` for the files. A verdict other than
   `approved`, or a design that does not show an element you must build ⇒ **do not improvise the UI** —
   the card is missing its design, which is step 8.
+- **A design card says what the UI must show; the files it is drawn into are YOUR call**, made with the
+  repository's design tree in front of you, which the plan that wrote the card could not see:
+  - **Always the two-file asset**: the area's `design-notes.md` plus a `*.mock.html`. No image export,
+    and no new source in another drawing tool.
+  - **A change to a surface an existing mock already draws is a new delta mock**,
+    `<surface>--<change>.mock.html` beside that mock, holding only the panels that change, plus a new
+    `##` section in the area's `design-notes.md` citing the section and mock it amends. The existing
+    mock is a record and is not edited.
+  - **A surface no mock draws yet is a new area**: its own folder, its own full `<surface>.mock.html` and
+    its own `design-notes.md`, never a delta of nothing. Look first (`list_designs` and the committed
+    design tree) to know which it is.
+  - **Publish the design result (`publish_design_result`) only when an open work item is `blocked_by`
+    the design card.** Nothing waits on it (a design defect fixed in place) ⇒ publish nothing; its
+    pull request is the review. Nothing publishes it for you: no call, no result on the card.
+  - **Criteria that still prescribe a shape the tree contradicts** (a "delta" of a surface no mock
+    draws, an unconditional "publish the result" on a card nothing waits on) are built to the tree:
+    the UI is the WHAT and the file shape is the HOW, so it is a build-through (step 8), never a stop.
 - The target repository's `CLAUDE.md` / `AGENTS.md` / contributing guide are its rules for the code.
 - **`motir next` stops here**: print the prompt for the user to hand to their own agent, say the card
   is claimed and In Progress, and stop. `motir run` carries on.
@@ -335,10 +352,16 @@ creates no work item except a bug. Hand the WHAT to Motir's planner, in this ord
    wrong CHILD, never the parent.)
 2. **`append_plan_turn { projectKey, targetKeys: [<key>], body }`** — ONE turn, one paragraph: what
    the card says, the evidence it cannot be built as written (paths, commits on the default branch),
-   and the correction you would make. Keep the `id` it returns.
-3. **`submit_plan_session { projectKey, targetKeys: [<key>], sessionId, requirement }`** — anchored on
-   the card, **submitted ONCE** (it spends the project owner's AI credits). `requirement` is six fields,
-   written from your own diagnosis — nobody will come back to ask you:
+   and the correction you would make. Keep the session `id` it returns.
+3. **`add_comment` on the card — the finding** (the same paragraph), BEFORE the submit, and keep the
+   comment's `id`: the submit names it, so a planner that cannot plan your report replies under it.
+4. **`submit_plan_session { projectKey, targetKeys: [<key>], sessionId, fromRun: true, runCommentId:
+   <the step-3 id>, requirement }`** — anchored on the card, **submitted ONCE** (it spends the project
+   owner's AI credits). `fromRun` tells the planner you have exited: it asks nothing, and either plans
+   or, when your text makes no sense or contradicts itself, plans nothing and replies under your
+   comment why. A card that lacks its design is corrected by a design card beside it whose body says
+   what the UI must show and names no file shape (step 4). `requirement` is six fields, written from
+   your own diagnosis — nobody will come back to ask you:
    - **`outcome`** — who the corrected card serves and what becomes possible once it is built right.
    - **`behaviour`** — the observable rules of the corrected shape, input → result, including the
      states that are not the happy path and any new edge (*the card waits on the new prerequisite*).
@@ -350,13 +373,18 @@ creates no work item except a bug. Hand the WHAT to Motir's planner, in this ord
      (*"a design card sits beside ACME-12 and ACME-12 waits on it"*).
    - **`assumptions`** — what you concluded that nobody confirmed.
 
-   `outcome`, `behaviour` and `acceptance` must be non-empty, or the planner opens a conversation
-   instead of planning. *"See my comment"* is not a WHAT. If the tool rejects the arguments, nothing
-   happened: submit once more without `requirement`.
-4. **`get_plan_status { planId }`** a few times, until it leaves `generating` or reports FAILED. Still
-   generating when you stop is a fine answer — report it. Approval is a person's, in Motir; never yours.
-5. **`add_comment` on the card** — the step-2 paragraph, the `planId`, and the status you last read.
-6. **Close the run `replanned`** (`close_work_item_run`), then **stop and report**: the card parked at
+   `outcome`, `behaviour` and `acceptance` must be non-empty, or the planner has only your turn to
+   read. *"See my comment"* is not a WHAT. Every field reaches planning as your claim, and planning
+   checks it against the code. If the tool rejects the arguments, nothing happened: submit once more
+   without `requirement`, keeping `fromRun` and `runCommentId`. If it says the re-plan has nowhere to
+   answer, submit once more with `targetKeys: [<key>]`.
+5. **`get_plan_status { planId }`** a few times, until it leaves `generating` or reports FAILED. Still
+   generating when you stop is a fine answer — report it. A plan discarded with a reply under your
+   comment is the planner's "cannot plan this" answer: report it with the reply. Approval is a
+   person's, in Motir; never yours.
+6. **`add_comment` replying under the step-3 comment** (`parentCommentId`) — the `planId` and the status
+   you last read.
+7. **Close the run `replanned`** (`close_work_item_run`), then **stop and report**: the card parked at
    Planning, the `planId`, its status, and that a plan waits for review. Build nothing.
 
 **A refusal is a stop, too** — and the thread is kept, so a person can submit it later:
@@ -394,6 +422,14 @@ report that you stopped and why. Never write the plan or the missing cards yours
   (`gh pr create --draft`), its title carrying the PARENT's key, and **`link_pull_request` it to the
   PARENT** in the same step. A draft cannot merge — which matters, because merging a parent's pull
   request moves the parent to Done and **closes every child under it**, built or not.
+- **Link the PARENT, once per repository, and NEVER a child — this is correctness, not style.** The
+  approval gates read the pull request's set of linked cards, so a child linked to the story's pull
+  request is asked the approve-and-merge question for the whole story, and its Approve merges every
+  child with it. The dispatch prompt tells each child the same: do not call `link_pull_request` with
+  the child's key. The parent link also stays correct as children are added, which a per-child link
+  does not. A child already linked **beside** the parent raises nothing and owes no repair; a child
+  linked **without** the parent is the defect itself, and the repair is to link the parent (and you may
+  `unlink_pull_request` the child). Never answer a child's merge question.
 - **A wrong child is judged alone, by step 8's test.** A child wrong only about its HOW is built through
   as one commit like any child, with `record_run_discrepancy` keyed on THAT child, and the parent run
   continues.

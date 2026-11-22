@@ -7,7 +7,7 @@
   {
     "corpusPath": "prompts/run.md",
     "heading": "⚠️ WHEN THE `motir-plan` SKILL IS NOT AVAILABLE — trigger motir-ai with the WHAT, or park, comment and STOP",
-    "sha256": "366b5aa7cb4476fcc168d2687e938fbc49cf039235fd5bbeab2e89d6e1d7497c"
+    "sha256": "0250c5d0007ddac798a7a63e3540d6df06b365f927cc962690e08f15750ef57b"
   },
   {
     "corpusPath": "prompts/run.md",
@@ -62,12 +62,12 @@
   {
     "corpusPath": "prompts/run.md",
     "heading": "`motir run` (alias `motir next --run`)",
-    "sha256": "00b1c7e55cf1234f57012e9472888dfd257fd01ac2ebbb7dd69a4dd3726d7241"
+    "sha256": "417f9e30fcf9cd96951373cd5612524a7c64846de99f6b6b869f4c626ab87f14"
   },
   {
     "corpusPath": "prompts/run.md",
     "heading": "`motir run <parent>` — run a container ONE LAYER above leaves (one commit per child)",
-    "sha256": "1acc2350bcdaea56ad5338fc0b8965dde7e4c0d8e8b43d95744129bcc0319b0e"
+    "sha256": "2ba96d7ccaf411ea477a6820fbc55984d5bc6858ffeaff4e609c47ac58002259"
   },
   {
     "corpusPath": "prompts/_shared.md",

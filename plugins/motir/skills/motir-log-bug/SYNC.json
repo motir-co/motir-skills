@@ -7,11 +7,11 @@
   {
     "corpusPath": "prompts/log-bug.md",
     "heading": "Placement — an EDGE keeps the bug in its RUNNABLE CONTAINER; otherwise the `Bugs` folder",
-    "sha256": "b2b8ca18d132b94de54e4554c880d6b0e60dccaeee0ae796600a8c4b61fa7c0d"
+    "sha256": "33ad754759e8b03b2f9c46f4e531bf90890dc6e1a129378fed8620b4cf8b2031"
   },
   {
     "corpusPath": "prompts/log-bug.md",
     "heading": "Procedure",
-    "sha256": "3593baaad1ee89eeb439f2b4585003f2687a06500aafe23c4ff1a1334341c638"
+    "sha256": "b492f13a78594005f21f4e1719db5910ceacbfdef1751a092569582692c3feed"
   }
 ]

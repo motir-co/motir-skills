@@ -48,8 +48,9 @@ source. `origin/main` is authoritative, not `HEAD`: when the two hashes differ, 
    out-of-scope rule, the placement (an edged bug stays in its runnable container, an edge-less one is
    filed into the `Bugs` folder), the wiring and the scheduling.
 3. `prompts/plan-rules/kind-bug.md` — the acceptance-criteria rules for a defect's body.
-4. `prompts/run.md` — only when the root cause is a card the PLAN got wrong: that bug's home is named
-   there.
+4. `prompts/run.md` — only when the root cause is a card the PLAN got wrong. That is not a bug this
+   command files: `motir log bug` never files into `Bugs / Planning bugs`, which only `run.md`'s stop
+   mechanics and the planning procedure write.
 
 **It printed `STANDALONE MODE`:** follow the procedure below.
 
@@ -76,8 +77,9 @@ lost. Never work around a failed call.
   **file nothing.** Report what you found, with the evidence, and ask whether they still want it
   tracked.
 - **The card is wrong, not the code** — the defect is that the work item itself asked for the wrong
-  thing — is not a bug to file. It is a re-plan: in a run, that is `motir-run`'s *the card is wrong*
-  step.
+  thing — is not a bug to file. In a run, that is `motir-run`'s *the card is wrong* step: a card wrong
+  only about its HOW is built through and recorded there, and a card whose WHAT breaks is a re-plan.
+  A planning mistake becomes a re-plan only when the run could not build through it.
 
 ### 2. Look for the card that already exists — project-wide
 
@@ -108,6 +110,12 @@ which cannot finish while the bug stands — **or is it `blocked_by` one?**
   `path` is exactly `["Bugs"]`, and pass its id as `folderId` with **no** `parentKey` (the two are
   exclusive). Never a sub-folder you were not sent to, never a folder you made up — this skill cannot
   create one. **No `Bugs` folder ⇒ stop and ask the user where bugs go.**
+- **There is no third branch: this skill never files into `Bugs / Planning bugs`.** That folder is
+  written only by a run's stop on a wrong card and by the planning procedure. A defect *in* a planning
+  feature (the plan-review screens, the planner's UI or code) or in the runbook's own text is a product
+  bug, however much it is "about the planner", and takes the two branches above like any other. For
+  example, a planning screen whose pill crushes the breadcrumbs, found mid-run and blocking nothing, has
+  no edge: it goes into `["Bugs"]`, `relates_to` the card being run.
 - **`relates_to` is not an edge.** Every bug gets one (step 5), so it cannot be what decides.
 - **A bug is never `blocked_by` a Done card.** A defect in shipped work is recorded by `relates_to`
   to that card.
@@ -131,7 +139,8 @@ which cannot finish while the bug stands — **or is it `blocked_by` one?**
 
   The *Found while* activity is one of `running <card>` (plus branch or commit), `planning <card>`,
   `verifying <card>`, or `dogfooding <the page or route>`. It records where the bug was **found**; the
-  edge test still decides where it **lives**.
+  edge test still decides where it **lives**. A bug about a plan slip opens with the same line; its activity is
+  usually `planning` or `running`, the pass that noticed the plan was wrong.
 
 Then **`update_work_item { key, explanationMd }`** — why the defect matters, in a paragraph:
 `create_work_item` has no field for it.
