@@ -2,7 +2,7 @@
   {
     "corpusPath": "prompts/run.md",
     "heading": "⚠️ A RUN NEVER ASKS ABOUT THE IMPLEMENTATION — it DECIDES what the plan left open by best practice, and RECORDS each decision",
-    "sha256": "8e25e5cdabe755549113260ce6c69aa40aaf6bc69a859b61c92afcef2daf36bd"
+    "sha256": "0edde1d19de47428fb4cde7b92f44e55611761bff06333b10c6c5e9e8a0c9ed6"
   },
   {
     "corpusPath": "prompts/run.md",
