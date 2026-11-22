@@ -249,8 +249,9 @@ git worktree add ../<repo>-<KEY> -b <KEY>-<short-slug> origin/<default-branch>
    silent), what you chose, why (the convention or the best practice you followed), and what you
    considered and did not take; up to 20, each field 1–2000 characters. The door keeps ONE record per
    run leg, so the two lists travel together, and a second call is refused
-   `DISCREPANCY_ALREADY_RECORDED`. It writes one card comment and one finding on the run. State the same
-   deviations in the pull request's description, and list the decisions under **Decisions the run
+   `DISCREPANCY_ALREADY_RECORDED`. It writes one record, shown in the card's **Run discrepancy**
+   section, and one finding on the run — no comment — and answers `{ recordId, recorded }`. State the
+   same deviations in the pull request's description, and list the decisions under **Decisions the run
    made**. A missing record never stops delivery: on a refusal you cannot fix, open the pull request
    anyway and write *"decision record missing: `<code or reason>`"* there and in your report. A run that
    decided nothing and built through nothing makes no call.
@@ -304,13 +305,14 @@ lesson**, and **never edits the card's body**.
 **Record it ONCE, after building and before the pull request opens** — in the same call as any
 `decisions` (step 6):
 `record_run_discrepancy { key, points: [{ planAsked, built, why }] }` with every point (1–20; each field
-1–2000 characters). The tool writes the card comment itself — do **not** also `add_comment` — and, when
-the card has an open run leg, one `discrepancy_recorded` finding; it answers `{ commentId, recorded }`.
+1–2000 characters). The tool writes ONE discrepancy record, which the card shows in its **Run
+discrepancy** section, and no comment — do **not** `add_comment` the points either — and, when the card
+has an open run leg, one `discrepancy_recorded` finding; it answers `{ recordId, recorded }`.
 Gated `work_item:edit`, which a Motir token already holds. State the same deviations in the pull
 request's description. On a parent run, record each discrepancy on its own CHILD's key.
 
 - **Check the tool is there before you rely on it:** it is in your tool list, or the record is missing.
-- **`recorded: false` is not missing:** the comment was written; the card simply had no open run leg.
+- **`recorded: false` is not missing:** the record was written; the card simply had no open run leg.
 - **A missing record never stops delivery.** On `RUN_DISCREPANCY_INVALID` fix the input and retry once. On
   `DISCREPANCY_ALREADY_RECORDED` do not retry — the leg already has its record. On any other refusal, a
   transport failure or an absent tool, open the pull request anyway and write *"discrepancy record
