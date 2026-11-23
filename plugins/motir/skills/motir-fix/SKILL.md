@@ -5,7 +5,8 @@ description: Repair ONE Motir card's red pull requests after the run that opened
 
 # `motir fix <KEY>` — repair a card's red pull requests on their own branches
 
-A card's run opened its pull requests and ended; then CI went red, the merge queue threw one out, or a
+A card's run opened its pull requests and ended; then CI went red, the merge queue threw one out, a
+pull request fell **out of date with its base or into conflict with it** (green checks or red), or a
 reviewer sent the story's acceptance video back with **Re-run**. This skill hands that card's pull
 requests to you as ONE locked repair: you fix them on the branches they already have, and CI — not you
 — moves the card on once they are green.
@@ -87,7 +88,9 @@ card stops reading *being fixed* and someone else may claim it — which is why 
 `claim_work_item_repair { key }`, before any checkout. Keep `runId`. A refusal changes nothing on the
 card and opens nothing to close — say it, end with *Nothing was changed*, and stop:
 
-- `claimed` — yours: name each pull request and its failing check, then step 2.
+- `claimed` — yours: name each pull request and its failing check, then step 2. A pull request with
+  green checks and no `queueExit` was handed over because it is out of date with its base or conflicts
+  with it — step 4 merges the base; it is never "nothing to fix".
 - `mine` — you already hold it: a **resume**, same `runId`. Step 2, reusing what is there.
 - `taken` — *already being fixed by `<holder.name>` since `<startedAt>` — not starting a second
   repair; two agents pushing to one pull request undo each other.* Push nothing.
@@ -134,7 +137,21 @@ is committed but unpushed and where. The person claims again if the work should 
 
 ### 4. Fix it — five attempts at most
 
-For each pull request, in its worktree:
+**Before any verdict, bring every pull request up to date with its base.** Read GitHub's merge state
+at its head:
+
+```
+gh api repos/<repo>/pulls/<number> --jq '[.head.sha, .mergeable_state] | @tsv'
+```
+
+`unknown` means GitHub is still computing it — read it again a few seconds later. **`behind`** (the
+base requires branches to be up to date) **or `dirty`** (a conflict) ⇒ in that worktree, `git fetch
+origin && git merge origin/<baseRef>`, resolve any conflict, run what it touched, commit and push. GitHub
+refuses to merge either state however green the checks are, so this merge is the repair, and it does
+not count as one of the five attempts. (`blocked` is a review or rule GitHub waits on — not a code
+change.) The claim's `pullRequests` do not say which state they are in yet, so GitHub is the source.
+
+Then, for each pull request, in its worktree:
 
 1. **Merge the base first** — `git fetch origin && git merge origin/<baseRef>`, a merge, never a
    rebase. CI judged your branch merged with its base; until you merge, the log describes a tree you do
@@ -147,7 +164,9 @@ For each pull request, in its worktree:
    suite locally: the push re-runs CI, and that is the verdict.
 4. **Commit and push to the same branch.** No new branch, no new pull request.
 5. **Watch** — `gh pr checks <number> --repo <repo> --watch`, touching the repair (step 3) while it
-   runs. **Green** everywhere ⇒ step 6 with `green` (or step 5's last turn first). **Still running** ⇒
+   runs. **Green** everywhere **and no pull request `behind` or `dirty` at its head** ⇒ step 6 with
+   `green` (or step 5's last turn first). One that went `behind` or `dirty` again while you waited
+   (the base moved on) ⇒ merge the base and push again, as above — no attempt spent. **Still running** ⇒
    keep waiting; waiting never counts as an attempt. **Red** ⇒ the next attempt.
 
 **Five fixing attempts is the cap** — the same as the `motir fix` CLI. A sixth red ⇒ step 6 with
@@ -194,7 +213,7 @@ problem is what a reviewer saw in the acceptance video; `acceptanceRefusal` carr
 
 | how it ended | `outcome` |
 |---|---|
-| every pull request green (and, on a re-run, the receipt published — by CI where the lane publishes) | `green` |
+| every pull request green and up to date with its base — no `behind`, no `dirty` (and, on a re-run, the receipt published — by CI where the lane publishes) | `green` |
 | the five attempts are spent | `gave_up` |
 | a checkout stop, a failure you could not fix, an attempt that pushed nothing, a structural re-run, a failed recording, an error | `halted` |
 | the person stopped you, or the session is ending first | `interrupted` |
@@ -210,8 +229,8 @@ waiting for CI's publish step.
 
 ### 7. Report
 
-The card and the outcome you closed with; each pull request (`repo#number`), its branch and final CI
-state — naming the checks still failing on `gave_up` or `halted`; the attempts used out of five; on a
+The card and the outcome you closed with; each pull request (`repo#number`), its branch, its final CI
+state and `mergeable_state`, and whether you merged its base into it — naming the checks still failing on `gave_up` or `halted`; the attempts used out of five; on a
 re-run, the acceptance receipt id and WHO published it — CI (with the run's link) or your MCP publish
 (or why there is none yet); and what the person does next — nothing on
 green (CI moves the card), or look at the named failure and run `motir fix <KEY>` again.
