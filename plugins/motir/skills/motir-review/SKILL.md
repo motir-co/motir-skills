@@ -143,6 +143,7 @@ neither.
 |---|---|
 | `REVIEW_VERDICT_LATE` | A push moved the head while you reviewed; the verdict was stored as late and decided nothing. Re-read the new head and review again **once**. If it moves again, report and stop. |
 | `REVIEW_VERDICT_SECOND` | That version already has a verdict. Report it and stop for that card. |
+| `REVIEW_NOT_YET_ASKED` | The project's review gate is on and the card's review has not been asked yet: no review is waiting at its current version, because its pull requests are not yet green and in review. Nothing was stored. Report it, and submit the same verdict again once the card's review is waiting. |
 | `REVIEW_TARGET_NOT_RUN_TARGET` | The card is reviewed as part of the run target the refusal names. Review that card instead. |
 | `REVIEW_NOTHING_TO_REVIEW` | The card delivers no pull request. Say so; nothing is owed. |
 | `INVALID_REVIEW_VERDICT` | The field it names is wrong (empty findings, a `met` row without evidence). Fix that field and submit again. |
@@ -152,8 +153,8 @@ neither.
 
 The checklist (every row, with its evidence or what would settle it), the findings by rank, every bug
 you logged (its key and title, or the existing bug you added your evidence to), and each verdict you
-submitted with its outcome: `decided` (an awaiting review was decided), `recorded` (no review gate was
-waiting; it is on the card's record), or the refusal.
+submitted with its outcome: `decided` (an awaiting review was decided), `recorded` (the project's review
+gate is off; it is on the card's record), or the refusal.
 
 ## What this skill never does
 
