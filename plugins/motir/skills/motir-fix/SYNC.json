@@ -2,7 +2,7 @@
   {
     "corpusPath": "prompts/fix.md",
     "heading": "WHAT IT IS FOR — a card whose run has ENDED, with red pull requests",
-    "sha256": "f9960906c23c9ce525bacd9573f41042a3f7c9bdc4779ea91818804f1b71a8e8"
+    "sha256": "8b53308ea06370b98dd124fa1703a6562ac36207e4dc28e9cad071262ee0fb1d"
   },
   {
     "corpusPath": "prompts/fix.md",
@@ -22,7 +22,7 @@
   {
     "corpusPath": "prompts/fix.md",
     "heading": "THE FIX — `run.md` § *YOUR CI WENT RED*, under the CLI's five-attempt cap",
-    "sha256": "ac56c99bc8ad4cdb8026e11a4e99b703608e7d7bdb90e4546302ea8d529a6dc5"
+    "sha256": "88bacab679695be60a4d7ad54369433ad5adbbeb634dff6c33c83c5db217a3cc"
   },
   {
     "corpusPath": "prompts/fix.md",
@@ -32,12 +32,12 @@
   {
     "corpusPath": "prompts/fix.md",
     "heading": "THE CLOSE — `close_work_item_repair` on EVERY exit path",
-    "sha256": "cced30c28f28932a7d0a0b3207a60269b827f099f46b91ae346a1b162463a4d9"
+    "sha256": "5da9693b6737cb758fd93723a39e0b521add4dd446c4c63de82f8977d224e070"
   },
   {
     "corpusPath": "prompts/fix.md",
     "heading": "THE REPORT — what a reader acts on",
-    "sha256": "cf2811ef2885f928f8bbb51bc8bbf8a60e996f53b0565a9a1731a4c4e05ca05b"
+    "sha256": "61fe1fec0d119fe6201947cf7d4dbd3bd7a53fc37354d7ace02ec84a7d31f9be"
   },
   {
     "corpusPath": "prompts/fix.md",
