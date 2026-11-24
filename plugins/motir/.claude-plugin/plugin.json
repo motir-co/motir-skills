@@ -1,7 +1,7 @@
 {
   "name": "motir",
-  "version": "0.10.5",
-  "description": "Motir's skills for your coding agent: run the next card end to end, repair a card's red pull requests on their own branches, carry on a dead run's work on the branch it left, log a verified bug, clear the Bugs folder one pull request per bug, close a manual card, be guided through a human card step by step, and review a card's pull requests against every acceptance criterion in its tree with your own agent. Installing it also connects the Motir MCP server, which you sign into in the browser the first time it is used.",
+  "version": "0.10.6",
+  "description": "Motir's skills for your coding agent: run the next card end to end, repair a card's red pull requests on their own branches, carry on a dead run's work on the branch it left, log a verified bug, clear the Bugs folder one pull request per bug, close a manual card, be guided through a human card step by step, and review a card's pull requests against every acceptance criterion in its tree with your own agent. Installing it also connects the Motir MCP server, which you sign into in the browser the first time it is used. The server's tools act as you in your workspace and can post comments that notify people, publish and edit cards and pages, delete cards, comments, sprints and folders, and spend Motir credits on planning; none changes anyone's access (see the README).",
   "author": {
     "name": "moooon B.V.",
     "url": "https://motir.co"

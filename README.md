@@ -36,6 +36,27 @@ Claude Code lists the skills once the plugin is installed, and `/mcp` shows `mot
 on claude.ai can also add the same plugin for all its members from its plugin settings — see
 Anthropic's [plugin admin guide](https://claude.com/docs/plugins/admin).
 
+## What the `motir` MCP server's tools can do
+
+The server's tools act in your Motir workspace as you, within the permissions you approve on the
+consent screen. Besides reading, they can:
+
+- **Send.** Post and edit comments on cards and pages, which notify anyone they mention.
+- **Publish.** Create and edit cards, pages, folders and sprints; publish a card's How to test,
+  acceptance video, design and decision pages; and submit a review verdict, which Motir's GitHub app
+  then posts on the card's pull requests. Creating a project repository creates and seeds that
+  repository on GitHub.
+- **Delete.** Permanently delete cards with everything under them, comments, to-dos, sprints and
+  folders; archive cards and pages; remove links between cards and between a card and a pull request;
+  withdraw a plan proposal; and dismiss a review's send-back.
+- **Pay.** Starting a planning job (expanding a card, or sending a planning conversation to the
+  planner) spends your workspace's Motir credits. No tool takes a payment or card details.
+- **Change access.** No tool grants or removes anyone's access to a workspace, project or repository.
+  Claiming a card assigns it to you; the server cannot change members, roles or tokens.
+
+Deleting a card is off for a token by default. The full list of tools and the permission each one
+needs is at <https://app.motir.co/docs/mcp/tools>.
+
 ## What you need first
 
 - A Motir account and a project.
