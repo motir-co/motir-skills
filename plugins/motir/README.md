@@ -21,7 +21,7 @@ skills are written for with `npx @motir/cli@0.8.0 <command>` (or install it once
 
 You need a Motir account and a project, `git`, and the GitHub CLI (`gh`) where a skill reads pull
 requests. Setup for other agents: <https://motir.co/docs/mcp>. Source, documentation and issues:
-<https://github.com/moooon-B-V/motir-skills>.
+<https://github.com/motir-co/motir-skills>.
 
 ## What the `motir` MCP server's tools can do
 

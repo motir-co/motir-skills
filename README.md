@@ -13,11 +13,11 @@ marketplace.
 ## Install in Claude Code
 
 ```text
-/plugin marketplace add moooon-B-V/motir-skills
+/plugin marketplace add motir-co/motir-skills
 /plugin install motir@motir-skills
 ```
 
-From a local clone, use the path instead: `git clone https://github.com/moooon-B-V/motir-skills.git`,
+From a local clone, use the path instead: `git clone https://github.com/motir-co/motir-skills.git`,
 then `/plugin marketplace add ./motir-skills` and the same `/plugin install`.
 
 One install brings two things:
